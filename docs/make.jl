@@ -17,5 +17,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/WISPO-POP/VariableFrequencyOPF.jl",
+    repo="github.com/WISPO-POP/VariableFrequencyOPF.jl.git",
 )
