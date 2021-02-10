@@ -2,3 +2,20 @@
 *.jl.cov
 *.jl.mem
 /docs/build/
+# ignore example data
+/examples/**
+# except figs, nordic and 5, 14, and 39 bus cases
+!/examples/fig
+!/examples/fig/**
+!/examples/case5
+!/examples/case5/**
+!/examples/case14
+!/examples/case14/**
+!/examples/case14_twoarea
+!/examples/case14_twoarea/**
+!/examples/case39
+!/examples/case39/**
+!/examples/nordicfault3
+!/examples/nordicfault3/**
+# ignore all results
+results/**

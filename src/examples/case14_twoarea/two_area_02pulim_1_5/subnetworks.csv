@@ -1,0 +1,3 @@
+index,file,variable_f,f_base,f_min,f_max
+1,case14.m,FALSE,60,60,60
+2,case14_lfac.m,TRUE,60,1,100
