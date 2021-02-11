@@ -1,30 +1,30 @@
 
 """
-   function frequency_ranges(
-      f_min,
-      f_max,
-      subnet::Int64,
-      directory::String,
-      objective::String,
-      x_axis::Array,
-      y_axis::Array;
-      gen_areas=Int64[],
-      area_transfer=Int64[],
-      gen_zones=[],
-      zone_transfer=[],
-      plot_vert_line::Tuple=([],""),
-      plot_horiz_line::Tuple=([],""),
-      xlimits::Array{Any,1}=[],
-      ylimits::Array{Any,1}=[],
-      output_plot_label::Tuple{String,String}=("",""),
-      scopf::Bool=false,
-      contingency::Int64=0,
-      k_cond=[],
-      k_ins=[],
-      scale_load=1.0,
-      scale_areas=Int64[],
-      no_converter_loss=false
-   )
+    function frequency_ranges(
+        f_min,
+        f_max,
+        subnet::Int64,
+        directory::String,
+        objective::String,
+        x_axis::Array,
+        y_axis::Array;
+        gen_areas=Int64[],
+        area_transfer=Int64[],
+        gen_zones=[],
+        zone_transfer=[],
+        plot_vert_line::Tuple=([],""),
+        plot_horiz_line::Tuple=([],""),
+        xlimits::Array{Any,1}=[],
+        ylimits::Array{Any,1}=[],
+        output_plot_label::Tuple{String,String}=("",""),
+        scopf::Bool=false,
+        contingency::Tuple=(0,),
+        k_cond=[],
+        k_ins=[],
+        scale_load=1.0,
+        scale_areas=Int64[],
+        no_converter_loss=false
+    )
 
 Models and solves an OPF with frequency in specified ranges between `f_min` and `f_max`.
 
@@ -53,7 +53,7 @@ Models and solves an OPF with frequency in specified ranges between `f_min` and 
 - `ylimits::Array{Any,1}`: Array of two values specifying the min and max y axis limits to apply to the plots, overriding any other limits. Default [] does not change the plot.
 - `output_plot_label::Tuple{String,String}`: specifies the plot to pass to the output. The first element must match the x axis label, and the second must match the y axis label.
 - `scopf::Bool`: if true, model and solve the N-1 security constrained OPF for each network. Each network folder must contain a contingency specification file (_*.con_) for each subnetwork. Default false.
-- `contingency::Int64`: indices of the contingency to plot. The base case index is 0. Default 0.
+- `contingency::Tuple`: indices of the contingency to plot. The precontingency index is (0,). Default (0,).
 - `k_cond`: conductor utilization parameter for HVDC. Only used when f==0. Default [].
 - `k_ins`: insulation factor parameter for HVDC. Only used when f==0. Default [].
 - `scale_load`: factor for scaling the load in the frequency sweep. Default 1.0.
