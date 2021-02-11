@@ -16,6 +16,12 @@ Add this package with the following command in the Julia REPL:
 
     ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
 
-Load the package with
+Load the package:
 
     using VariableFrequencyOPF
+
+You can also run the package tests:
+
+    ] test VariableFrequencyOPF
+
+See the [documentation](https://WISPO-POP.github.io/VariableFrequencyOPF.jl/dev) for a guide to using the functions in this package.
