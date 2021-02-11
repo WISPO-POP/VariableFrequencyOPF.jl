@@ -1192,7 +1192,7 @@ version = "0.4.1+1"
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxkbfile_jll"]
 git-tree-sha1 = "4bcbf660f6c2e714f87e960a171b119d06ee163b"
 uuid = "35661453-b289-5fab-8a00-3d9160c6a3a4"
-version = "1.4.2+4"
+version = "1.4.2+4">>>>>>> 7f1aae72f3e1f3e42477a918274067180f77d223
 
 [[Xorg_xkeyboard_config_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xkbcomp_jll"]
