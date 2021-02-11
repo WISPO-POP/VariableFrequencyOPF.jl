@@ -259,9 +259,15 @@ version = "3.3.9+7"
 
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "4863cbb7910079369e258dee4add9d06ead5063a"
+git-tree-sha1 = "ff537e5a3cba92fb48f30fec46723510450f2c0e"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.8.14"
+version = "0.10.2"
+
+[[FiniteDiff]]
+deps = ["ArrayInterface", "LinearAlgebra", "Requires", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "f6f80c8f934efd49a286bb5315360be66956dfc4"
+uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
+version = "2.8.0"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
