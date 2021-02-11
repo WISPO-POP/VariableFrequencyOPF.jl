@@ -40,7 +40,7 @@ Models and solves an OPF with frequency in specified ranges between `f_min` and 
    - "minredispatch": minimize the change in generator dispatch from the initial values defined in the network data
 - `x_axis::Array`: Array of Tuples identifying the x axis series for which plots should be generated over the points in the frequency sweep. A separate folder of plots is generated for each Tuple in the array. The series can be specified in the Tuple in one of three ways:
    - **results dictionary values:** A two-element Tuple, where the first element is a String matching a key in the results dictionary output from `multifrequency_opf` and the second element is an Int specifying a subnetwork. This plots the values of this key and subnetwork entry on the x axis.
-   - **network data values:** A Tuple with elements corresponding to keys at each level of the network data dictionary, identifying any network variable value. This plots the values of the specified network variable on the x axis. Any key in the Tuple may be an Array, in which case a separate plot is generated for each key. For example, to generate four plots, the active and reactive power at the origin ("f") bus and destination ("t") bus for branch 1 in subnetwork 2, use the Tuple `("nw",2,"branch",1,["pt","pf","qt","qf"])`
+   - **network data values:** A Tuple with elements corresponding to keys at each level of the network data dictionary, identifying any network variable value. This plots the values of the specified network variable on the x axis. Any key in the Tuple may be an Array, in which case a separate plot is generated for each key. For example, to generate four plots, the active and reactive power at the origin ("f") bus and destination ("t") bus for branch 1 in subnetwork 2, use the Tuple `("sn",2,"branch",1,["pt","pf","qt","qf"])`
    - **custom values:** A two-element Tuple, where the first element is a String not matching any keys in the results dictionary and the second element is an Array. This plots the values in the Array on the x axis with the label in the String.
 - `y_axis::Array`: Array of Tuples identifying the y axis series for which plots should be generated over the points in the frequency sweep. A separate folder of plots is generated for each Tuple in the array. These are specified in the same way as `x_axis`.
 - `gen_areas`: all areas in which generation should be minimized if `obj=="areagen"`
@@ -87,9 +87,9 @@ function frequency_ranges(
    )
    suffix=""
    if scopf
-      params = ([["nw",contingency,"sn",subnet,"f_min"],["nw",contingency,"sn",subnet,"f_max"]],[f_min, f_max])
+      params = ([["sn",contingency,"sn",subnet,"f_min"],["sn",contingency,"sn",subnet,"f_max"]],[f_min, f_max])
    elseif scale_load==1
-      params = ([["nw",subnet,"f_min"],["nw",subnet,"f_max"]],[f_min, f_max])
+      params = ([["sn",subnet,"f_min"],["sn",subnet,"f_max"]],[f_min, f_max])
    else
       println("Scaling load by $scale_load.")
       suffix = "_scaled_x$(string(scale_load))"
@@ -100,13 +100,13 @@ function frequency_ranges(
       # get load pd and qd from areas of interest and put them in dict_filt
       sn_data = read_sn_data(directory)
       dict_filt = Dict()
-      for (subnet_idx,sn_subnet) in sn_data["nw"]
+      for (subnet_idx,sn_subnet) in sn_data["sn"]
          for (load_idx,load) in sn_subnet["load"]
             if (sn_subnet["bus"]["$(load["load_bus"])"]["area"] in scale_areas) || (scale_all_areas)
-               pd_keys = ["nw",subnet_idx,"load",load_idx,"pd"]
+               pd_keys = ["sn",subnet_idx,"load",load_idx,"pd"]
                pd = load["pd"]
                set_nested!(dict_filt, pd_keys, pd)
-               qd_keys = ["nw",subnet_idx,"load",load_idx,"qd"]
+               qd_keys = ["sn",subnet_idx,"load",load_idx,"qd"]
                qd = load["qd"]
                set_nested!(dict_filt, qd_keys, qd)
             end
@@ -125,14 +125,14 @@ function frequency_ranges(
          values_scaled[idx] = val * ones(length(f_min)) * scale_load
       end
 
-      params = (append!([["nw",subnet,"f_min"],["nw",subnet,"f_max"]],load_keys),append!(Any[f_min, f_max], values_scaled))
+      params = (append!([["sn",subnet,"f_min"],["sn",subnet,"f_max"]],load_keys),append!(Any[f_min, f_max], values_scaled))
    end
 
    if (length(k_cond)) > 0 && (length(k_ins) > 0)
       if scopf
-         dc_params = ([["nw",contingency,"sn",subnet,"k_ins"],["nw",contingency,"sn",subnet,"k_cond"],["nw",contingency,"sn",subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
+         dc_params = ([["sn",contingency,"sn",subnet,"k_ins"],["sn",contingency,"sn",subnet,"k_cond"],["sn",contingency,"sn",subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
       else
-         dc_params = ([["nw",subnet,"k_ins"],["nw",subnet,"k_cond"],["nw",subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
+         dc_params = ([["sn",subnet,"k_ins"],["sn",subnet,"k_cond"],["sn",subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
       end
    else
       dc_params = ()

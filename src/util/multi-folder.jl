@@ -155,7 +155,7 @@ function run_series(
    if !isdir(output_folder)
       mkpath(output_folder)
    end
-   start_vals = Dict{String, Dict}("nw"=>Dict())
+   start_vals = Dict{String, Dict}("sn"=>Dict())
    subnet_array = []
    n_subnets = 0
 

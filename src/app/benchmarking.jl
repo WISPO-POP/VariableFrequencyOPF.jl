@@ -14,9 +14,9 @@ function compare_power_flows(first_network, second_network, plot_dir)
     end
     # println("Finished parsing the second network")
 
-    first_ref = PowerModels.build_ref(first_mn_data)[:nw]
+    first_ref = PowerModels.build_ref(first_mn_data)[:sn]
     # println("Finished building ref for the first network")
-    second_ref = PowerModels.build_ref(second_mn_data)[:nw]
+    second_ref = PowerModels.build_ref(second_mn_data)[:sn]
     # println("Finished building ref for the second network")
 
     table_string = ""

@@ -750,14 +750,14 @@ function scale_load(
    # get load pd and qd from areas of interest and put them in dict_filt
    sn_data = read_sn_data(directory)
    dict_filt = Dict()
-   for (subnet_idx,sn_subnet) in sn_data["nw"]
+   for (subnet_idx,sn_subnet) in sn_data["sn"]
       println("number of loads: $(length(sn_subnet["load"]))")
       for (load_idx,load) in sn_subnet["load"]
          if (sn_subnet["bus"]["$(load["load_bus"])"]["area"] in areas) || (scale_all_areas)
-            pd_keys = ["nw",subnet_idx,"load",load_idx,"pd"]
+            pd_keys = ["sn",subnet_idx,"load",load_idx,"pd"]
             pd = load["pd"]
             set_nested!(dict_filt, pd_keys, pd)
-            qd_keys = ["nw",subnet_idx,"load",load_idx,"qd"]
+            qd_keys = ["sn",subnet_idx,"load",load_idx,"qd"]
             qd = load["qd"]
             set_nested!(dict_filt, qd_keys, qd)
          end

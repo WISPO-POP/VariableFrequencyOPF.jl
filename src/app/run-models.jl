@@ -56,7 +56,7 @@ function run_opf(
       suffix,
       print_results;
       override_param=Dict(),
-      start_vals=Dict("nw"=>Dict()),
+      start_vals=Dict("sn"=>Dict()),
       no_converter_loss::Bool=false
    )
    (result, res_summary, solution_pm, binding_cnstr) = multifrequency_opf(

@@ -48,7 +48,7 @@ function plot_results_dict_line(
       ax_key = x_axis
 
       if !(ax_key[1] in keys(results_dict))
-         if ax_key[1] == "nw"
+         if ax_key[1] == "sn"
             x_label = join(ax_key, " ")
             # x_label = ax_key
             # println("x_label: $x_label")
@@ -106,7 +106,7 @@ function plot_results_dict_line(
       if length(points_dict) > 0
          ax_key = x_axis
          if !(ax_key[1] in keys(points_dict))
-            if ax_key[1] == "nw"
+            if ax_key[1] == "sn"
                x_label = join(ax_key, " ")
                # x_label = ax_key
                # println("x_label: $x_label")
@@ -231,7 +231,7 @@ function plot_results_dict_line(
             plt = plots[label][1]
             plotlabel = label
             dirs = split(label," ")
-            if dirs[1] == "nw"
+            if dirs[1] == "sn"
                plotdir = join(dirs[1:end-1],"/")
             else
                plotdir = ""

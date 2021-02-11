@@ -287,13 +287,13 @@ function apply_params(
          # println("axis: $axis")
          for ax_key in axis
             if !(ax_key[1] in keys(result))
-               if ax_key[1] == "nw"
-                  for nw_key in ax_key[2]
+               if ax_key[1] == "sn"
+                  for sn_key in ax_key[2]
                      elem = ax_key[3]
                      for elem_key in ax_key[4]
                         if isa(ax_key[5], Array)
                            for quantity in ax_key[5]
-                              new_key = ("nw", "$nw_key", elem, "$elem_key", quantity)
+                              new_key = ("sn", "$sn_key", elem, "$elem_key", quantity)
                               label = join(new_key, " ")
                               if (ax_idx == 1) && !(new_key in x_label_arr)
                                  push!(x_label_arr,new_key)
@@ -302,7 +302,7 @@ function apply_params(
                               if value == nothing
                                  # println(new_key)
                                  # println(keys(solution_pm))
-                                 # println(solution_pm["nw"])
+                                 # println(solution_pm["sn"])
                                  # throw(KeyError("The value $new_key for axis $ax_idx is not found."))
                                  # println("The value $new_key for axis $ax_idx is not found.")
                                  value = NaN
@@ -327,7 +327,7 @@ function apply_params(
                            end
                         else
                            quantity = ax_key[5]
-                           new_key = ("nw", "$nw_key", elem, "$elem_key", quantity)
+                           new_key = ("sn", "$sn_key", elem, "$elem_key", quantity)
                            label = join(new_key, " ")
                            if (ax_idx == 1) && !(new_key in x_label_arr)
                               push!(x_label_arr,new_key)
@@ -358,7 +358,7 @@ function apply_params(
                         end
                      end
                   end
-               elseif (ax_idx == 1) && !(ax_key in x_label_arr) # ax_key[1] is not "nw": custom axis values and label
+               elseif (ax_idx == 1) && !(ax_key in x_label_arr) # ax_key[1] is not "sn": custom axis values and label
                   push!(x_label_arr,ax_key)
                end
             elseif (ax_idx == 1) && !(ax_key in x_label_arr) # ax_key is in the results dict and should be in the x axis array

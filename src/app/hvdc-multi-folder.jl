@@ -20,9 +20,9 @@ function hvdc_comparison(
    )
    if (length(k_cond)) > 0 && (length(k_ins) > 0)
       if scopf
-         dc_params = ([["nw",contingency,"sn",dc_subnet,"k_ins"],["nw",contingency,"sn",dc_subnet,"k_cond"],["nw",contingency,"sn",dc_subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
+         dc_params = ([["sn",contingency,"sn",dc_subnet,"k_ins"],["sn",contingency,"sn",dc_subnet,"k_cond"],["sn",contingency,"sn",dc_subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
       else
-         dc_params = ([["nw",dc_subnet,"k_ins"],["nw",dc_subnet,"k_cond"],["nw",dc_subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
+         dc_params = ([["sn",dc_subnet,"k_ins"],["sn",dc_subnet,"k_cond"],["sn",dc_subnet,"f_max"]],[k_ins, k_cond, zeros(length(k_ins))])
       end
    else
       dc_params = ()

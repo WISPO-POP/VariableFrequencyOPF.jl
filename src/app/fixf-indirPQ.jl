@@ -65,7 +65,7 @@ function run_subnets(
    if !isdir(output_folder)
       mkpath(output_folder)
    end
-   start_vals = Dict{String, Dict}("nw"=>Dict())
+   start_vals = Dict{String, Dict}("sn"=>Dict())
    if scopf
       for i in 1:length(folders)
          println("running $parent_folder/$(folders[i])  |  $i/$(length(folders)) folders")
@@ -89,7 +89,7 @@ function run_subnets(
             suffix
          )
          if i==1
-            start_vals = Dict("nw"=>Dict("0"=>solution_pm["nw"]["0"]))
+            start_vals = Dict("sn"=>Dict("0"=>solution_pm["sn"]["0"]))
          end
          res_summary = summary_dict[0]
          res_summary.network = rstrip(folders[i],'/')*suffix
@@ -119,7 +119,7 @@ function run_subnets(
             suffix
          )
          if i==1
-            start_vals = Dict("nw"=>Dict("0"=>solution_pm["nw"]["0"]))
+            start_vals = Dict("sn"=>Dict("0"=>solution_pm["sn"]["0"]))
          end
          res_summary = summary_dict[0]
          res_summary.network = rstrip(folders[i],'/')*suffix
@@ -149,7 +149,7 @@ function run_subnets(
          #    suffix
          # )
          # if i==1
-         #    start_vals = Dict("nw"=>Dict("0"=>solution_pm["nw"]["0"]))
+         #    start_vals = Dict("sn"=>Dict("0"=>solution_pm["sn"]["0"]))
          # end
          # res_summary = summary_dict[0]
          # res_summary.network = rstrip(folders[i],'/')*suffix

@@ -4,7 +4,7 @@ function set_startvals!(
    va, vm, pg, qg, p, q, f
    )
    # Set starting values if given
-   for (subnet_idx, subnet) in start_vals["nw"]
+   for (subnet_idx, subnet) in start_vals["sn"]
       subnet_idx_int = parse(Int64,subnet_idx)
       if subnet_idx_int in keys(vm)
          for (bus_i,bus) in subnet["bus"]
@@ -37,7 +37,7 @@ function set_startvals!(
             end
          end
          if "frequency" in keys(subnet)
-            if ref[:nw][subnet_idx_int][:variable_f]
+            if ref[:sn][subnet_idx_int][:variable_f]
                JuMP.set_start_value(f[subnet_idx], subnet["frequency"])
                println("set subnet $subnet_idx_int frequency starting value")
             end

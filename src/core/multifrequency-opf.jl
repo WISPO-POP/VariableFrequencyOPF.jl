@@ -29,7 +29,7 @@ Models and solves the OPF for a single network with data contained in `folder`.
 - `gen_zones`: integer array of all zones in which generation should be minimized if `obj=="zonegen"`
 - `zone_interface`: two zones with power transfer between them that should be saved and plotted. Results for P, Q, S, and loss are saved for power transfer between the two zones. Must have exactly two elements.
 - `print_results::Bool`: if true, print the DataFrames containing the output values for buses, branches, generators, and interfaces. These values are always saved to the output *.csv* files whether true or false.
-- `override_param::Dict{Any}`: values to override in the network data defined in `folder`. Must follow the same structure as the full network data dictionary, beginning with key "nw". Default empty Dict.
+- `override_param::Dict{Any}`: values to override in the network data defined in `folder`. Must follow the same structure as the full network data dictionary, beginning with key "sn". Default empty Dict.
 - `fix_f_override::Bool`: if true, fix the frequency in every subnetwork to the base value, overriding the `variable_f` parameter to `variable_f=false` for every subnetwork. Default false.
 - `direct_pq::Bool`: If direct_pq is false, then the interface is treated as a single node and power flow respects Kirchoff Laws, by constraining the voltage magnitude and angle on each side to be equal and enforcing reactive power balance. Default true.
 - `master_subnet::Int64`: if `direct_pq==false`, the angle reference must be defined for exactly one subnetwork, since the other subnetwork angles are coupled through the interfaces. Value of `master_subnet` defines which subnetwork provides this reference. Default 1.
@@ -48,7 +48,7 @@ function multifrequency_opf(
    direct_pq::Bool=true,
    master_subnet::Int64=1,
    suffix::String="",
-   start_vals=Dict{String, Dict}("nw"=>Dict()),
+   start_vals=Dict{String, Dict}("sn"=>Dict()),
    no_converter_loss::Bool=false,
    uniform_gen_scaling::Bool=false,
    unbounded_pg::Bool=false
@@ -107,7 +107,7 @@ function multifrequency_opf(
       direct_pq::Bool=true,
       master_subnet::Int64=1,
       suffix::String="",
-      start_vals=Dict{String, Dict}("nw"=>Dict())
+      start_vals=Dict{String, Dict}("sn"=>Dict())
       )
 
       (output_dict, res_summary, solution_pm, binding_cnstr_dict) = multifrequency_opf(
@@ -142,7 +142,7 @@ function multifrequency_opf(
       fix_f_override::Bool=false,
       direct_pq::Bool=true,
       master_subnet::Int64=1,
-      start_vals=Dict{String, Dict}("nw"=>Dict()),
+      start_vals=Dict{String, Dict}("sn"=>Dict()),
       uniform_gen_scaling::Bool=false,
       unbounded_pg::Bool=false
       )
@@ -185,18 +185,18 @@ function multifrequency_opf(
 
       # Add fix_f_override to override_params if true
    if fix_f_override
-      for (subnet_idx, subnet) in mn_data["nw"]
-         set_nested!(override_param, ["nw","$subnet_idx","variable_f"], false)
+      for (subnet_idx, subnet) in mn_data["sn"]
+         set_nested!(override_param, ["sn","$subnet_idx","variable_f"], false)
       end
    end
 
    # if any override parameter subnetwork index has a value of -1, apply it to all variable frequency networks
-   if "nw" in keys(override_param)
-      if "-1" in keys(override_param["nw"])
-         subdict = pop!(override_param["nw"],"-1")
-         for (subnet_idx, subnet) in mn_data["nw"]
+   if "sn" in keys(override_param)
+      if "-1" in keys(override_param["sn"])
+         subdict = pop!(override_param["sn"],"-1")
+         for (subnet_idx, subnet) in mn_data["sn"]
             if subnet["variable_f"]
-               override_param["nw"]["$subnet_idx"] = deepcopy(subdict)
+               override_param["sn"]["$subnet_idx"] = deepcopy(subdict)
                # println("Set override of subnet $subnet_idx to $subdict")
             end
          end
@@ -212,7 +212,12 @@ function multifrequency_opf(
    open("$output_folder/network_data.json", "w") do f
       write(f, stringnet)
    end
-   ref = PowerModels.build_ref(mn_data)[:nw]
+   ref = Dict{Int64,Any}()
+   for (subnet_idx,subnet) in mn_data["sn"]
+      subnet_idx_int = parse(Int64,subnet_idx)
+      ref[subnet_idx_int] = PowerModels.build_ref(subnet)[:nw][0]
+   end
+
    # note: ref contains all the relevant system parameters needed to build the OPF model
    # and it is a Dict with the ref data for each subnetwork
    # When we introduce constraints and variable bounds below, we use the parameters in ref.
@@ -237,7 +242,7 @@ function multifrequency_opf(
       end
    end
 
-   # print_summary(mn_data["nw"]["1"])
+   # print_summary(mn_data["sn"]["1"])
    ###############################################################################
    # 1. Building the Optimal Power Flow Model
    ###############################################################################
@@ -745,31 +750,31 @@ function multifrequency_opf(
    solution_pm = deepcopy(mn_data)
    for (subnet_idx, ref_subnet) in ref
       for (i,gen) in ref_subnet[:gen]
-         solution_pm["nw"]["$subnet_idx"]["gen"]["$i"]["pg"] = value(pg[subnet_idx][gen["index"]])
-         solution_pm["nw"]["$subnet_idx"]["gen"]["$i"]["qg"] = value(qg[subnet_idx][gen["index"]])
+         solution_pm["sn"]["$subnet_idx"]["gen"]["$i"]["pg"] = value(pg[subnet_idx][gen["index"]])
+         solution_pm["sn"]["$subnet_idx"]["gen"]["$i"]["qg"] = value(qg[subnet_idx][gen["index"]])
       end
       for (i,bus) in ref_subnet[:bus]
-         solution_pm["nw"]["$subnet_idx"]["bus"]["$i"]["vm"] = value(vm[subnet_idx][bus["bus_i"]])
-         solution_pm["nw"]["$subnet_idx"]["bus"]["$i"]["va"] = value(va[subnet_idx][bus["bus_i"]])
+         solution_pm["sn"]["$subnet_idx"]["bus"]["$i"]["vm"] = value(vm[subnet_idx][bus["bus_i"]])
+         solution_pm["sn"]["$subnet_idx"]["bus"]["$i"]["va"] = value(va[subnet_idx][bus["bus_i"]])
       end
       for (i,branch) in ref_subnet[:branch]
          f_idx = (i, branch["f_bus"], branch["t_bus"])
          t_idx = (i, branch["t_bus"], branch["f_bus"])
-         solution_pm["nw"]["$subnet_idx"]["branch"]["$i"]["pf"] = value(p[subnet_idx][f_idx])
-         solution_pm["nw"]["$subnet_idx"]["branch"]["$i"]["pt"] = value(p[subnet_idx][t_idx])
-         solution_pm["nw"]["$subnet_idx"]["branch"]["$i"]["qf"] = value(q[subnet_idx][f_idx])
-         solution_pm["nw"]["$subnet_idx"]["branch"]["$i"]["qt"] = value(q[subnet_idx][t_idx])
+         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["pf"] = value(p[subnet_idx][f_idx])
+         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["pt"] = value(p[subnet_idx][t_idx])
+         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qf"] = value(q[subnet_idx][f_idx])
+         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qt"] = value(q[subnet_idx][t_idx])
          va_fr = va[subnet_idx][branch["f_bus"]]
          va_to = va[subnet_idx][branch["t_bus"]]
-         solution_pm["nw"]["$subnet_idx"]["branch"]["$i"]["angle"] = value(va_fr) - value(va_to)
+         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["angle"] = value(va_fr) - value(va_to)
       end
       for (i,dcline) in ref_subnet[:dcline]
          f_idx = (i, dcline["f_bus"], dcline["t_bus"])
          t_idx = (i, dcline["t_bus"], dcline["f_bus"])
-         solution_pm["nw"]["$subnet_idx"]["dcline"]["$i"]["pf"] = value(p_dc[subnet_idx][f_idx])
-         solution_pm["nw"]["$subnet_idx"]["dcline"]["$i"]["pt"] = value(p_dc[subnet_idx][t_idx])
-         solution_pm["nw"]["$subnet_idx"]["dcline"]["$i"]["qf"] = value(q_dc[subnet_idx][f_idx])
-         solution_pm["nw"]["$subnet_idx"]["dcline"]["$i"]["qt"] = value(q_dc[subnet_idx][t_idx])
+         solution_pm["sn"]["$subnet_idx"]["dcline"]["$i"]["pf"] = value(p_dc[subnet_idx][f_idx])
+         solution_pm["sn"]["$subnet_idx"]["dcline"]["$i"]["pt"] = value(p_dc[subnet_idx][t_idx])
+         solution_pm["sn"]["$subnet_idx"]["dcline"]["$i"]["qf"] = value(q_dc[subnet_idx][f_idx])
+         solution_pm["sn"]["$subnet_idx"]["dcline"]["$i"]["qt"] = value(q_dc[subnet_idx][t_idx])
       end
    end
    # Export network to file for debugging
@@ -1128,18 +1133,18 @@ function multifrequency_opf(
    # for (subnet_idx, ref_subnet) in ref
    #    for (i,bus) in ref_subnet[:bus]
    #       # println("bus $i:")
-   #       # println("base value: $(mn_data["nw"]["$subnet_idx"]["bus"]["$(bus["index"])"]["vm"])")
-   #       mn_data["nw"]["$subnet_idx"]["bus"]["$(bus["index"])"]["vm"] = value(vm[subnet_idx][i])
+   #       # println("base value: $(mn_data["sn"]["$subnet_idx"]["bus"]["$(bus["index"])"]["vm"])")
+   #       mn_data["sn"]["$subnet_idx"]["bus"]["$(bus["index"])"]["vm"] = value(vm[subnet_idx][i])
    #       # println("changed to: $(value(vm[subnet_idx][i]))")
    #    end
    #    for (i,gen) in ref_subnet[:gen]
    #       # println("gen $i:")
-   #       # println("base value: $(mn_data["nw"]["$subnet_idx"]["gen"]["$(gen["index"])"]["pg"])")
-   #       mn_data["nw"]["$subnet_idx"]["gen"]["$(gen["index"])"]["pg"] = value(pg[subnet_idx][i])
+   #       # println("base value: $(mn_data["sn"]["$subnet_idx"]["gen"]["$(gen["index"])"]["pg"])")
+   #       mn_data["sn"]["$subnet_idx"]["gen"]["$(gen["index"])"]["pg"] = value(pg[subnet_idx][i])
    #       # println("changed to: $(value(pg[subnet_idx][i]))")
    #    end
    # end
-   # pm_1 = build_model(mn_data["nw"]["1"], ACPPowerModel, PowerModels.post_pf, setting = Dict("output" => Dict("branch_flows" => true)))
+   # pm_1 = build_model(mn_data["sn"]["1"], ACPPowerModel, PowerModels.post_pf, setting = Dict("output" => Dict("branch_flows" => true)))
    # result = optimize_model!(pm_1, with_optimizer(Ipopt.Optimizer))
    # # result=run_pf(ref, ACPPowerModel, with_optimizer(Ipopt.Optimizer))
    # print_summary(result["solution"])
@@ -1330,8 +1335,8 @@ function multifrequency_opf(
                      if !(class_i in keys(binding_cnstr_dict))
                         binding_cnstr_dict[class_i] = Dict{String, Any}()
                      end
-                     # if "ctg_label" in keys(mn_data["nw"]["$ctg_i"])
-                     #    lbl = mn_data["nw"]["$ctg_i"]["ctg_label"]
+                     # if "ctg_label" in keys(mn_data["sn"]["$ctg_i"])
+                     #    lbl = mn_data["sn"]["$ctg_i"]["ctg_label"]
                      # else
                      #    lbl = "no"
                      # end

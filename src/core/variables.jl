@@ -29,10 +29,10 @@ function add_vars!(
       model,
       [i in keys(ref_subnet[:bus])],
       base_name="va_$(subnet_idx)",
-      start = mn_data["nw"]["$(subnet_idx)"]["bus"]["$i"]["va"]
+      start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"]
       # start = 0.0
    )
-   # println([mn_data["nw"]["$(subnet_idx)"]["bus"]["$i"]["va"] for i in keys(ref_subnet[:bus])])
+   # println([mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"] for i in keys(ref_subnet[:bus])])
    # note: [i in keys(ref[:bus])] adds one `va` variable for each bus in the subnetwork
    # Add voltage magnitudes vm for each bus
    vm[subnet_idx] = @variable(
@@ -41,7 +41,7 @@ function add_vars!(
       base_name = "vm_$(subnet_idx)",
       upper_bound = ref_subnet[:bus][i]["vmax"],
       lower_bound = ref_subnet[:bus][i]["vmin"],
-      start = mn_data["nw"]["$(subnet_idx)"]["bus"]["$i"]["vm"]
+      start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["vm"]
       # start = 1.0
    )
    for bus_i in keys(ref_subnet[:bus])
@@ -64,7 +64,7 @@ function add_vars!(
       base_name="pg_$(subnet_idx)",
       lower_bound=ref_subnet[:gen][i]["pmin"]*ref_subnet[:baseMVA] != -9999.0 ? ref_subnet[:gen][i]["pmin"] : -Inf,
       upper_bound=ref_subnet[:gen][i]["pmax"]*ref_subnet[:baseMVA] != 9999.0 ? ref_subnet[:gen][i]["pmax"] : Inf,
-      start = mn_data["nw"]["$(subnet_idx)"]["gen"]["$i"]["pg"]
+      start = mn_data["sn"]["$(subnet_idx)"]["gen"]["$i"]["pg"]
    )
    # Add reactive power generation variable qg for each generator (including limits)
 
@@ -74,7 +74,7 @@ function add_vars!(
       base_name="qg_$(subnet_idx)",
       lower_bound=ref_subnet[:gen][i]["qmin"],
       upper_bound=ref_subnet[:gen][i]["qmax"],
-      start = mn_data["nw"]["$(subnet_idx)"]["gen"]["$i"]["qg"]
+      start = mn_data["sn"]["$(subnet_idx)"]["gen"]["$i"]["qg"]
    )
 
    for gen_i in keys(ref_subnet[:gen])
