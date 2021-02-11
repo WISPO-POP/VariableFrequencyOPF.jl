@@ -2,7 +2,7 @@
 *.jl.cov
 *.jl.mem
 /docs/build/
-manifest.toml
+Manifest.toml
 # ignore example data
 /examples/**
 # except figs, nordic and 5, 14, and 39 bus cases
