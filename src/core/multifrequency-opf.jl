@@ -1148,7 +1148,7 @@ function multifrequency_opf(
 
    # Define output dictionary
    output_dict = Dict{String, Any}(
-      "cost (USD)"=>cost_arr,
+      "cost"=>cost_arr,
       "frequency (Hz)"=>f_arr,
       "subnet"=>[subnet_idx for (subnet_idx, ref_subnet) in ref],
       "status"=>termination_status(model),

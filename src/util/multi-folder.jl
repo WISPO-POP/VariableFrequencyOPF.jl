@@ -161,7 +161,7 @@ function run_series(
 
    # Choose which label to use for sorting all the results
    if objective == "mincost"
-      first_label = "cost (USD)"
+      first_label = "cost"
    elseif objective == "areagen"
       n_areas = length(gen_areas)
       if n_areas > 1
@@ -307,7 +307,7 @@ end
 function get_sort_indices(results_dict, objective, gen_areas::Array, area_transfer::Array, gen_zones::Array, zone_transfer::Array)
    # Choose which label to use for sorting all the results
    if objective == "mincost"
-      first_label = "cost (USD)"
+      first_label = "cost"
    elseif objective == "areagen"
       n_areas = length(gen_areas)
       if n_areas > 1

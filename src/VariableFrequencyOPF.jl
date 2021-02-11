@@ -19,6 +19,7 @@ using Plots.PlotMeasures
 using StatsPlots
 import Unicode
 import GR
+import MathOptInterface
 
 include("plot/bar-plots.jl")
 include("plot/line-plots.jl")
@@ -35,7 +36,6 @@ include("app/frequency-sweep.jl")
 include("app/hvdc-multi-folder.jl")
 include("app/modify-network.jl")
 include("app/run-models.jl")
-include("app/series-compensation.jl")
 include("app/benchmarking.jl")
 
 include("util/collect-results.jl")

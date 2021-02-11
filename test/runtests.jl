@@ -1,6 +1,9 @@
 using VariableFrequencyOPF
 using Test
 
+import JuMP
+import MathOptInterface
+
 @testset "VariableFrequencyOPF.jl" begin
-    # Write your tests here.
+    include("opf.jl")
 end
