@@ -1,6 +1,6 @@
 
 """
-   read_sn_data(folder::String)
+    read_sn_data(folder::String)
 
 Reads a network folder and builds the mn_data dictionary.
 
@@ -33,11 +33,11 @@ function read_sn_data(folder::String)
 end
 
 """
-   function make_mn_data(
-      subnetworks,
-      interfaces,
-      networks::Dict{String,Any}
-   )
+    function make_mn_data(
+        subnetworks,
+        interfaces,
+        networks::Dict{String,Any}
+    )
 
 Builds the mn_data dictionary from the specifications of the subnetworks and interfaces DataFrames and the network data in the networks Dict.
 

@@ -1,18 +1,22 @@
 
 """
     multifrequency_opf(
-      folder::String,
-      obj::String;
-      gen_areas=[],
-      area_interface=[],
-      gen_zones=[],
-      zone_interface=[],
-      print_results::Bool=false,
-      override_param::Dict{Any}=Dict(),
-      fix_f_override::Bool=false,
-      direct_pq::Bool=true,
-      master_subnet::Int64=1,
-      suffix::String=""
+        folder::String,
+        obj::String;
+        gen_areas=[],
+        area_interface=[],
+        gen_zones=[],
+        zone_interface=[],
+        print_results::Bool=false,
+        override_param::Dict{Any}=Dict(),
+        fix_f_override::Bool=false,
+        direct_pq::Bool=true,
+        master_subnet::Int64=1,
+        suffix::String="",
+        start_vals=Dict{String, Dict}("sn"=>Dict()),
+        no_converter_loss::Bool=false,
+        uniform_gen_scaling::Bool=false,
+        unbounded_pg::Bool=false
     )
 
 Models and solves the OPF for a single network with data contained in `folder`.
@@ -34,6 +38,7 @@ Models and solves the OPF for a single network with data contained in `folder`.
 - `direct_pq::Bool`: If direct_pq is false, then the interface is treated as a single node and power flow respects Kirchoff Laws, by constraining the voltage magnitude and angle on each side to be equal and enforcing reactive power balance. Default true.
 - `master_subnet::Int64`: if `direct_pq==false`, the angle reference must be defined for exactly one subnetwork, since the other subnetwork angles are coupled through the interfaces. Value of `master_subnet` defines which subnetwork provides this reference. Default 1.
 - `suffix::String`: suffix to add to the output directory when saving results. Default empty string.
+- `start_vals`: Nested dictionary populated with values to be used as a starting point in the optimization model. Applies to bus `vm` and `va`, gen `pg` and `qg`, branch `pt`, `pf`, `qt` and `qf` and subnet `f`. Any of these values which are present in the dictionary will be applied; other values will be ignored. A full network data dictionary can be used. Default `Dict{String, Dict}("sn"=>Dict())`.
 """
 function multifrequency_opf(
    folder::String,

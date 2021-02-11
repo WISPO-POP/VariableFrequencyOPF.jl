@@ -1,5 +1,5 @@
 """
-    function enumerate_branches(
+    function upgrade_branches(
        base_network::String,
        output_location::String,
        fbase;
@@ -8,7 +8,7 @@
        )
 Creates a folder of network data for the network `base_network` with one line converted to LFAC, one for each index in `indices`, or if `indices` is empty, for every non-transformer branch in the network.
 """
-function enumerate_branches(
+function upgrade_branches(
    base_network::String,
    output_location::String,
    fbase;
