@@ -24,4 +24,4 @@ You can also run the package tests:
 
     ] test VariableFrequencyOPF
 
-See the [documentation](https://WISPO-POP.github.io/VariableFrequencyOPF.jl/dev) for a guide to using the functions in this package.
+See the [documentation](https://WISPO-POP.github.io/VariableFrequencyOPF.jl/stable) for a guide to using the functions in this package.
