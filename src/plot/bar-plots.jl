@@ -387,7 +387,7 @@ function plot_results_dicts_bar(
                      br_results[label][0][series_s][folder] = subnet_result
                      if occursin("base", folder) && (series_s == 1)
                         base_results[label][subnet_number] = subnet_result
-                        println("set base_results[$label][$subnet_number] to $subnet_result")
+                        # println("set base_results[$label][$subnet_number] to $subnet_result")
                      end
                   else
                      try
@@ -406,7 +406,7 @@ function plot_results_dicts_bar(
                         elseif occursin("base", folder)
                            # if series_s == 1
                               base_results[label][subnet_number] = subnet_result
-                              println("set base_results[$label][$subnet_number] to $subnet_result")
+                              # println("set base_results[$label][$subnet_number] to $subnet_result")
                            # end
                         end
                      catch BoundsError
@@ -441,7 +441,7 @@ function plot_results_dicts_bar(
    # Save permutation vector to sort all by primary result instead of sorting each individually
    for (series_s,results_dict) in enumerate(results_dict_allplots)
       make_result_arrays!(br_results_all, base_results, br_results_all_sorted, results_dict_allplots[series_s], series_s, plotlabels, plotdirs)
-      println("base_results: $base_results")
+      # println("base_results: $base_results")
       for (label,results) in results_dict
          if (label == "status") || (label == "subnet")
             continue
@@ -543,7 +543,7 @@ function plot_results_dicts_bar(
             palette=color_palette
          )
          base_res = base_results[label][subnet_i]
-         println("base_results[$label][$subnet_i] = $base_res")
+         # println("base_results[$label][$subnet_i] = $base_res")
          if !isnan(base_res) && (base_res != -9999.0)
             println("plotting base = $base_res")
             hline!([base_res], line=(2*upscale, :dash), label="base network")
