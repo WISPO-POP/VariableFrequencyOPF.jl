@@ -2,8 +2,7 @@
 CurrentModule = VariableFrequencyOPF
 ```
 
-# VariableFrequencyOPF
-## Description
+# VariableFrequencyOPF.jl
 AC optimal power flow for networks with multiple frequencies, with each frequency as an optimization variable.
 
 One main goal of this package is a flexible and extensible implementation which can fully accommodate the multiple and variable frequency OPF formulation with power flow control between frequency areas. This package allows additional modifications to the constraints and objective function as the analysis develops.
