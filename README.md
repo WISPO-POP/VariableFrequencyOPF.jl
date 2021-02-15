@@ -1,4 +1,4 @@
-# VariableFrequencyOPF
+# VariableFrequencyOPF.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://WISPO-POP.github.io/VariableFrequencyOPF.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://WISPO-POP.github.io/VariableFrequencyOPF.jl/dev)
@@ -15,6 +15,10 @@ Another goal is a smooth extension of existing data formats to the case of multi
 Add this package with the following command in the Julia REPL:
 
     ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
+    
+or
+
+    ] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
 
 Load the package:
 
