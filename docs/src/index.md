@@ -13,6 +13,10 @@ Add this package with the following command in the Julia REPL:
 
     ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
 
+or
+
+    ] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
+
 Load the package:
 
     using VariableFrequencyOPF
@@ -48,7 +52,53 @@ This example shows two interfaces. The first connects bus 1011 in subnetwork 1 t
 ![Flowchart for OPF](examples/fig/flowchart_opf.svg)
 
 ## Examples
-### Run the OPF for a set of upgrades
+### Solve the OPF for a network with a variable frequency (low frequency AC) portion
+Consider a power system which is divided into two areas connected by AC-AC converters: one operates at a fixed frequency of 60 Hz, and the other is a multi-terminal low frequency AC network, whose frequency can be chosen. In the directory `test/data/case14_twoarea` is data for a modified IEEE 14 bus network which fits this paradigm, as drawn here, with the variable frequency portion in blue:
+![14 bus network with LFAC](examples/fig/14bus_twoarea.svg)
+
+In this example, we solve the OPF for this case, and we print the termination status, generation cost and optimal frequencies (The frequency of the standard part of the network is fixed at 60 Hz, and the frequency of the other part is allowed to vary between 1.0 and 100.0 Hz).
+```julia
+using VariableFrequencyOPF
+
+network = "test/data/case14_twoarea/two_area/"
+objective = "mincost"
+solution = VariableFrequencyOPF.multifrequency_opf(network, objective)
+
+results_dict = solution[1]
+println("Status:")
+println(results_dict["status"])
+println("\nCost:\n==============================")
+println("Variable frequency subnetwork:")
+println(results_dict["cost"][1])
+println("Fixed frequency subnetwork:")
+println(results_dict["cost"][2])
+println("\nFrequency:\n==============================")
+println("Variable frequency subnetwork:")
+println(results_dict["frequency (Hz)"][1])
+println("Fixed frequency subnetwork:")
+println(results_dict["frequency (Hz)"][2])
+```
+**output:**
+```
+Status:
+LOCALLY_SOLVED
+
+Cost:
+==============================
+Variable frequency subnetwork:
+7565.237470495639
+Fixed frequency subnetwork:
+553.6125608844086
+
+Frequency:
+==============================
+Variable frequency subnetwork:
+1.0
+Fixed frequency subnetwork:
+60.0
+```
+
+### Solve the OPF for a set of upgrades
 We want to define a set of upgrades in the Nordic system, each consisting of a single point-to-point upgrade. We use the function `enumerate_branches` to create the network data for each upgraded case. This generates a folder of network data for the single network file `base_network` with one line converted to LFAC, once for each index in `indices`, or if `indices` is empty, for every non-transformer branch in the network. Once we have created the data for each of these upgrades, we can call `run_series` to solve the OPF for each upgrade.
 
 ```julia
