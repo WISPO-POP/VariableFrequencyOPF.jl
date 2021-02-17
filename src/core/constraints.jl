@@ -428,26 +428,26 @@ function add_constraints!(
    # assumes costs are given as quadratic functions
    cost_pg[subnet_idx] = @variable(model, base_name = "cost_pg_$(subnet_idx)")
    @constraint(
-   model,
-   cost_pg[subnet_idx] == sum(
-   gen["cost"][1]*pg[subnet_idx][i]^2
-   + gen["cost"][2]*pg[subnet_idx][i]
-   + gen["cost"][3]
-   for (i,gen) in ref_subnet[:gen]
+      model,
+      cost_pg[subnet_idx] == sum(
+      gen["cost"][1]*pg[subnet_idx][i]^2
+      + gen["cost"][2]*pg[subnet_idx][i]
+      + gen["cost"][3]
+         for (i,gen) in ref_subnet[:gen]
       )
-      )
-      # index representing which side the HVDC line is starting
-      from_idx = Dict(arc[1] => arc for arc in ref_subnet[:arcs_from_dc])
-      cost_dcline[subnet_idx] = @variable(model, base_name = "cost_dcline_$(subnet_idx)")
-      @constraint(
+   )
+   # index representing which side the HVDC line is starting
+   from_idx = Dict(arc[1] => arc for arc in ref_subnet[:arcs_from_dc])
+   cost_dcline[subnet_idx] = @variable(model, base_name = "cost_dcline_$(subnet_idx)")
+   @constraint(
       model,
       cost_dcline[subnet_idx] == sum(
       dcline["cost"][1]*p_dc[subnet_idx][from_idx[i]]^2
       + dcline["cost"][2]*p_dc[subnet_idx][from_idx[i]]
       + dcline["cost"][3]
-      for (i,dcline) in ref_subnet[:dcline]
-         )
-         )
+         for (i,dcline) in ref_subnet[:dcline]
+      )
+   )
    if (obj=="mincost") | (obj=="areagen") | (obj=="zonegen")
       if (obj=="areagen")
          areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))

@@ -13,6 +13,12 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Examples" => [
+            "Variable Frequency OPF" => "opf_examples.md",
+            "Comparing Upgrades" => "comparison_examples.md",
+            "Analyzing Frequency Dependence" => "frequency_examples.md"
+            ],
+        "Functions" => "functions.md"
     ],
 )
 

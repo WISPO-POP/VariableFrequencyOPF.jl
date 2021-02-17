@@ -10,10 +10,15 @@ Reads a network folder and builds the mn_data dictionary.
 function read_sn_data(folder::String)
    directory_path = "$folder/"
    subnet_file = "$(directory_path)/subnetworks.csv"
-   interface_file = "$(directory_path)/interfaces.csv"
 
    subnets = CSV.File(subnet_file) |> DataFrame!
-   interfaces = CSV.File(interface_file) |> DataFrame!
+
+   if nrow(subnets) == 1
+      interfaces = DataFrame(index=Int64[],file=String[],variable_f=Bool[],f_base=Float64[],f_min=Float64[],fmax=Float64[])
+   else
+      interface_file = "$(directory_path)/interfaces.csv"
+      interfaces = CSV.File(interface_file) |> DataFrame!
+   end
 
    networks = Dict{String,Any}()
 
@@ -23,7 +28,7 @@ function read_sn_data(folder::String)
 
       # Add zeros to turn linear objective functions into quadratic ones
       # so that additional parameter checks are not required
-      # PowerModels.standardize_cost_terms!(networks[subnet.file], order=2)
+      PowerModels.standardize_cost_terms!(networks[subnet.file], order=2)
 
    end
 

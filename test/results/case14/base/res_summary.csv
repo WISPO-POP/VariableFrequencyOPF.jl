@@ -1,0 +1,2 @@
+subnet,f,fmin,fmax,min_v,max_v,avg_v,ngen_Qll,ngen_Qul,ngen,minQloss,maxQloss,n_negQloss,n_s_bound,max_ang_diff,min_ang_diff,nbranch,total_loss,converter_loss,cost,objective,time_s,status
+1,60.0,60.0,60.0,1.0144610827734593,1.06,1.039361016591337,1,0,5,-0.014109091613610993,0.04233749411604931,2,0,7.428443304566483,-1.2610256940350824,20,0.09287204631077328,0.0,8081.524734828355,8081.524734828355,1.033301363,LOCALLY_SOLVED
