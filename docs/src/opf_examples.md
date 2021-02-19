@@ -4,7 +4,7 @@ We begin by solving the optimal power flow for a network with a single, fixed fr
 
 ![5 bus network](examples/fig/5bus.svg)
 
-It is represented in a MATPOWER case file: [case5.m](../../test/data/case5/base/case5.m)
+It is represented in a MATPOWER case file: [case5.m](https://github.com/WISPO-POP/VariableFrequencyOPF.jl/test/data/case5/base/case5.m)
 
 For this example, we put this file in a folder called `base` inside a parent folder `case5` for all the cases we'll consider here. This will be the base network without any upgrades.
 

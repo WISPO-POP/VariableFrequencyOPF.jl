@@ -139,7 +139,8 @@ function run_series(
       fix_f_override::Bool=false,
       direct_pq::Bool=true,
       master_subnet::Int64=1,
-      no_converter_loss::Bool=false
+      no_converter_loss::Bool=false,
+      output_to_files::Bool=false
    )
    folders = [f for f in readdir(parent_folder) if (isdir("$parent_folder/$f"))]
 
@@ -198,7 +199,8 @@ function run_series(
          direct_pq, master_subnet,
          suffix, print_results,
          override_param=override_param_tmp,
-         no_converter_loss=no_converter_loss
+         no_converter_loss=no_converter_loss,
+         output_to_files=output_to_files
       )
 
       # println("STATUS: $(res_summary_temp.status[1])")
@@ -214,7 +216,8 @@ function run_series(
             direct_pq, master_subnet,
             suffix, print_results,
             override_param=override_param_tmp,
-            no_converter_loss=no_converter_loss
+            no_converter_loss=no_converter_loss,
+            output_to_files=output_to_files
          )
          if (res_summary_init.status[1] in [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED])
             println("Using no-loss solution as initialization, running OPF again with converter losses.")
@@ -227,7 +230,8 @@ function run_series(
                suffix, print_results,
                override_param=override_param_tmp,
                start_vals=solution_pm_init,
-               no_converter_loss=no_converter_loss
+               no_converter_loss=no_converter_loss,
+               output_to_files=output_to_files
             )
          end
       end
@@ -252,34 +256,14 @@ function run_series(
    base_res = NaN
 
    for (folder,res) in results
-      # if results_dict["status"][folder] in [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED]
-         subnet_array = union(subnet_array, results_dict["subnet"][folder]) # Get maximal set with subnets represented in any folders
-         if occursin("br", folder)
-            push!(br_results, sum(res))
-            push!(br_indices, folder)
-         elseif occursin("base", folder)
-            base_res = res
-            println("set base_res to $base_res")
-         end
-      # else
-      #    subnet_array = union(subnet_array, results_dict["subnet"][folder]) # Get maximal set with subnets represented in any folders
-      #    if occursin("br", folder)
-      #       if occursin("_fixf", folder)
-      #          push!(br_results_fixf, -9999.0)
-      #          push!(br_indices_fixf, folder[3:(end-5)])
-      #       elseif occursin("_indirPQ", folder)
-      #          push!(br_results_indirPQ, -9999.0)
-      #          push!(br_indices_indirPQ, folder[3:(end-8)])
-      #       else
-      #          push!(br_results, -9999.0)
-      #          push!(br_indices, folder[3:end])
-      #       end
-      #    # elseif folder == "base"
-      #    #    base_res = -9999.0
-      #    elseif folder == "base_unconstrPS"
-      #       base_res = -9999.0
-      #    end
-      # end
+      subnet_array = union(subnet_array, results_dict["subnet"][folder]) # Get maximal set with subnets represented in any folders
+      if occursin("br", folder)
+         push!(br_results, sum(res))
+         push!(br_indices, folder)
+      elseif occursin("base", folder)
+         base_res = res
+         println("set base_res to $base_res")
+      end
    end
 
    br_results_tosort = copy(br_results)
@@ -287,14 +271,16 @@ function run_series(
    perm = sortperm(br_results_tosort)
    idx_sorted = br_indices[perm]
 
-   results_dict_string = JSON.json(results_dict)
-   println("Saving results at $(output_folder)/all_results_dict.json")
-   open("$output_folder/all_results_dict.json", "w") do f
-      write(f, results_dict_string)
-   end
+   if output_to_files
+      results_dict_string = JSON.json(results_dict)
+      println("Saving results at $(output_folder)/all_results_dict.json")
+      open("$output_folder/all_results_dict.json", "w") do f
+         write(f, results_dict_string)
+      end
 
-   println("Saving summary at $(output_folder)/summary.csv")
-   CSV.write("$(output_folder)/summary.csv", summary_df)
+      println("Saving summary at $(output_folder)/summary.csv")
+      CSV.write("$(output_folder)/summary.csv", summary_df)
+   end
 
    n_subnets = length(subnet_array)
 

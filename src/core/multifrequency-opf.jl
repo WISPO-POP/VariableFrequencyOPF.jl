@@ -56,7 +56,8 @@ function multifrequency_opf(
    start_vals=Dict{String, Dict}("sn"=>Dict()),
    no_converter_loss::Bool=false,
    uniform_gen_scaling::Bool=false,
-   unbounded_pg::Bool=false
+   unbounded_pg::Bool=false,
+   output_to_files::Bool=true
    )
 
    println("read_sn_data($folder)")
@@ -93,7 +94,8 @@ function multifrequency_opf(
       master_subnet,
       start_vals,
       uniform_gen_scaling,
-      unbounded_pg
+      unbounded_pg,
+      output_to_files
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -149,7 +151,8 @@ function multifrequency_opf(
       master_subnet::Int64=1,
       start_vals=Dict{String, Dict}("sn"=>Dict()),
       uniform_gen_scaling::Bool=false,
-      unbounded_pg::Bool=false
+      unbounded_pg::Bool=false,
+      output_to_files::Bool=true
       )
 
    # If direct_pq is false, then interface flow respects Kirchoff
@@ -211,12 +214,13 @@ function multifrequency_opf(
    # if any override parameters exist in the override_param dictionary, apply them
    combine_nested!(mn_data, override_param)
 
-   # use build_ref to filter out inactive components
-   println("Parsed network data. Saving JSON.")
-   stringnet = JSON.json(mn_data)
-   open("$output_folder/network_data.json", "w") do f
-      write(f, stringnet)
+   if output_to_files
+      stringnet = JSON.json(mn_data)
+      open("$output_folder/network_data.json", "w") do f
+         write(f, stringnet)
+      end
    end
+   # use build_ref to filter out inactive components
    ref = Dict{Int64,Any}()
    for (subnet_idx,subnet) in mn_data["sn"]
       subnet_idx_int = parse(Int64,subnet_idx)
@@ -229,10 +233,12 @@ function multifrequency_opf(
 
 
    # Export ref to file for debugging
-   println("Set ref data. Saving JSON.")
-   stringref = JSON.json(ref)
-   open("$output_folder/ref_data.json", "w") do f
-       write(f, stringref)
+   if output_to_files
+      println("Set ref data. Saving JSON.")
+      stringref = JSON.json(ref)
+      open("$output_folder/ref_data.json", "w") do f
+         write(f, stringref)
+      end
    end
 
    # Use this to print any generators which have intial values outside their limits
@@ -783,10 +789,12 @@ function multifrequency_opf(
       end
    end
    # Export network to file for debugging
-   println("Wrote solution to PowerModels network. Saving JSON.")
-   stringnet = JSON.json(solution_pm)
-   open("$output_folder/network_solved.json", "w") do f
-      write(f, stringnet)
+   if output_to_files
+      println("Wrote solution to PowerModels network. Saving JSON.")
+      stringnet = JSON.json(solution_pm)
+      open("$output_folder/network_solved.json", "w") do f
+         write(f, stringnet)
+      end
    end
 
    # Check the value of the objective function
@@ -998,9 +1006,11 @@ function multifrequency_opf(
          println("total subnet losses: $(subnet_loss)")
       end
 
-      CSV.write("$output_folder/res_bus_$subnet_idx.csv", bus_df)
-      CSV.write("$output_folder/res_gen_$subnet_idx.csv", gen_df)
-      CSV.write("$output_folder/res_branch_$subnet_idx.csv", br_df)
+      if output_to_files
+         CSV.write("$output_folder/res_bus_$subnet_idx.csv", bus_df)
+         CSV.write("$output_folder/res_gen_$subnet_idx.csv", gen_df)
+         CSV.write("$output_folder/res_branch_$subnet_idx.csv", br_df)
+      end
 
       subnets_arr[summary_idx] = subnet_idx
       f_arr[summary_idx] = freq_res
@@ -1044,7 +1054,9 @@ function multifrequency_opf(
       time_s=time_s_arr,
       status=status_arr
    )
-   CSV.write("$output_folder/res_summary.csv", res_summary)
+   if output_to_files
+      CSV.write("$output_folder/res_summary.csv", res_summary)
+   end
 
    tot_load = 0.0
    tot_gen = 0.0
@@ -1088,9 +1100,11 @@ function multifrequency_opf(
       end
       subnet_br_loss = sum(Float64[abs(value(p[subnet_idx][(i,br["f_bus"],br["t_bus"])]) + value(p[subnet_idx][(i,br["t_bus"],br["f_bus"])])) for (i,br) in ref_subnet[:branch]])
       sn_branch_loss += subnet_br_loss
-      open("$output_folder/balance_$(subnet_idx).csv", "w") do io
-         write(io, "total load, $(sn_load)\ntotal generation, $(sn_gen)\ntotal shunt losses, $(sn_shunt_p)\ntotal branch losses, $(sn_branch_loss)\ntotal interface losses, $(sn_interface_p)\ntotal dc line losses, $(sn_dc_loss)\ntotal flow from buses, $(sn_bus_flow)")
-      end;
+      if output_to_files
+         open("$output_folder/balance_$(subnet_idx).csv", "w") do io
+            write(io, "total load, $(sn_load)\ntotal generation, $(sn_gen)\ntotal shunt losses, $(sn_shunt_p)\ntotal branch losses, $(sn_branch_loss)\ntotal interface losses, $(sn_interface_p)\ntotal dc line losses, $(sn_dc_loss)\ntotal flow from buses, $(sn_bus_flow)")
+         end
+      end
       tot_load += sn_load
       tot_gen += sn_gen
       tot_shunt_p += sn_shunt_p
@@ -1098,9 +1112,11 @@ function multifrequency_opf(
       tot_dc_loss += sn_dc_loss
       tot_bus_flow += sn_bus_flow
    end
-   open("$output_folder/balance_tot.csv", "w") do io
-      write(io, "total load, $(tot_load)\ntotal generation, $(tot_gen)\ntotal shunt losses, $(tot_shunt_p)\ntotal branch losses, $(tot_branch_loss)\ntotal interface losses, $(tot_interface_p)\ntotal dc line losses, $(tot_dc_loss)\ntotal flow from buses, $(tot_bus_flow)")
-   end;
+   if output_to_files
+      open("$output_folder/balance_tot.csv", "w") do io
+         write(io, "total load, $(tot_load)\ntotal generation, $(tot_gen)\ntotal shunt losses, $(tot_shunt_p)\ntotal branch losses, $(tot_branch_loss)\ntotal interface losses, $(tot_interface_p)\ntotal dc line losses, $(tot_dc_loss)\ntotal flow from buses, $(tot_bus_flow)")
+      end
+   end
 
    # Define arrays for interface table
    n_iface_bus = sum(Int64[length(interface["converter_buses"]) for (i,interface) in mn_data["converter"]])
@@ -1133,7 +1149,9 @@ function multifrequency_opf(
       # println("total system generation: $(full_gen)")
       # println("total system losses: $(full_loss)")
    end
-   CSV.write("$output_folder/res_interfaces.csv", iface_df)
+   if output_to_files
+      CSV.write("$output_folder/res_interfaces.csv", iface_df)
+   end
    # Apply the PV bus changes and run the power flow
    # for (subnet_idx, ref_subnet) in ref
    #    for (i,bus) in ref_subnet[:bus]
@@ -1316,8 +1334,10 @@ function multifrequency_opf(
    end
 
    outdict_string = JSON.json(output_dict)
-   open("$output_folder/output_values.json", "w") do f
-       write(f, outdict_string)
+   if output_to_files
+      open("$output_folder/output_values.json", "w") do f
+          write(f, outdict_string)
+      end
    end
 
    binding_cnstr_dict = Dict{Symbol, Any}()
@@ -1359,8 +1379,10 @@ function multifrequency_opf(
       end
    end
    binding_cnstr_dict_string = JSON.json(binding_cnstr_dict)
-   open("$output_folder/binding_constraints.json", "w") do f
-      write(f, binding_cnstr_dict_string)
+   if output_to_files
+      open("$output_folder/binding_constraints.json", "w") do f
+         write(f, binding_cnstr_dict_string)
+      end
    end
 
    return (output_dict, res_summary, solution_pm, binding_cnstr_dict)

@@ -9,14 +9,14 @@
 Creates a folder of network data for the network `base_network` with one line converted to LFAC, one for each index in `indices`, or if `indices` is empty, for every non-transformer branch in the network.
 """
 function upgrade_branches(
-   base_network::String,
-   output_location::String,
-   fbase;
-   subnet_params=Dict(),
-   interface_params=Dict(),
-   indices=[],
-   output_type="input",
-   noloss=false
+      base_network::String,
+      output_location::String,
+      fbase;
+      subnet_params=Dict(),
+      interface_params=Dict(),
+      indices=[],
+      output_type="input",
+      noloss=false
    )
    filename = split(base_network, "/")[end]
    println("$filename")
@@ -608,31 +608,31 @@ function upgrade_branches(
             write_branch_ctg_file(ctg_br_dict_tmp, output_dir*"/"*ctg_filename)
             write_branch_ctg_file(lfac_ctg_br_dict, output_dir*"/"*"lfac_"*ctg_filename)
          end
-
-
-
-
-
-         # Copy files to a new folder with new subnetworks file for a fixed frequency
-         # output_dir_fixf = "$output_location/br$(br_idx)_fixf"
-         # output_dir_fixf = "$(rstrip(output_dir,'/'))_fixf"
-         # if !isdir(output_dir_fixf)
-         #    mkpath(output_dir_fixf)
-         # end
-         # cp("$output_dir/interfaces.csv", "$output_dir_fixf/interfaces.csv", force=true)
-         # cp("$output_dir/lfac_$(filename)", "$output_dir_fixf/lfac_$(filename)", force=true)
-         # cp("$output_dir/$(filename)", "$output_dir_fixf/$(filename)", force=true)
-         # cp("$output_dir/ctg_filename", "$output_dir_fixf/ctg_filename", force=true)
-         # cp("$output_dir/lfac_$(ctg_filename)", "$output_dir_fixf/lfac_$(ctg_filename)", force=true)
-         # Save subnetworks file
-         # CSV.write("$output_dir_fixf/subnetworks.csv", subnet_df_fixf)
-         # if :contingency_file in names(subnet_df)
-         #    write_branch_ctg_file(ctg_br_dict_tmp, output_dir_fixf*"/"*ctg_filename)
-         #    write_branch_ctg_file(lfac_ctg_br_dict, output_dir_fixf*"/"*"lfac_"*ctg_filename)
-         # end
-
       end
    end
+end
+
+function enumerate_branches(
+      base_network::String,
+      output_location::String,
+      fbase;
+      subnet_params=Dict(),
+      interface_params=Dict(),
+      indices=[],
+      output_type="input",
+      noloss=false
+   )
+   println("The function enumerate_branches is deprecated. Please use upgrade_branches instead.")
+   upgrade_branches(
+      base_network,
+      output_location,
+      fbase;
+      subnet_params,
+      interface_params,
+      indices,
+      output_type,
+      noloss
+   )
 end
 
 function write_branch_ctg_file(ctg_dict, filename)

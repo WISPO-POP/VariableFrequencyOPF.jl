@@ -57,13 +57,18 @@ function run_opf(
       print_results;
       override_param=Dict(),
       start_vals=Dict("sn"=>Dict()),
-      no_converter_loss::Bool=false
+      no_converter_loss::Bool=false,
+      output_to_files=output_to_files
    )
    (result, res_summary, solution_pm, binding_cnstr) = multifrequency_opf(
       "$parent_folder/$(folder)", objective,
-      gen_areas=gen_areas, area_interface=area_transfer, gen_zones=gen_zones, zone_interface=zone_transfer, print_results=print_results,
+      gen_areas=gen_areas, area_interface=area_transfer,
+      gen_zones=gen_zones, zone_interface=zone_transfer,
+      print_results=print_results,
       fix_f_override=fix_f_override, direct_pq=direct_pq,
-      master_subnet=1, suffix=suffix, override_param=override_param, start_vals=start_vals, no_converter_loss=no_converter_loss
+      master_subnet=1, suffix=suffix, override_param=override_param,
+      start_vals=start_vals, no_converter_loss=no_converter_loss,
+      output_to_files=output_to_files
       )
    results_dict_out = deepcopy(results_dict)
    for (label, value) in result
