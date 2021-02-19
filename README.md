@@ -13,12 +13,13 @@ One main goal of this package is a flexible and extensible implementation which 
 Another goal is a smooth extension of existing data formats to the case of multiple and variable frequencies. To this end, it is important that the software can import industry standard steady state network modeling formats with the minimum necessary additional specification of the parameters which are new to this framework.
 ## Usage
 Add this package with the following command in the Julia REPL:
-
-    ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
-    
-or
-
-    ] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
+```julia
+] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
+```
+Or, if you prefer SSH and have it configured, you can use this:
+```julia
+] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
+```
 
 Load the package:
 
