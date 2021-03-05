@@ -1,0 +1,7 @@
+f_min=31
+Added constraints in subnet 1:
+["vm_1[114] ≤ 1.05", "vm_1[117] ≤ 1.05", "vm_1[216] ≤ 1.05"]
+
+f_min=51
+Removed constraints in subnet 1:
+["vm_1[114] ≤ 1.05", "vm_1[117] ≤ 1.05", "vm_1[216] ≤ 1.05"]

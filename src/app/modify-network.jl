@@ -18,6 +18,9 @@ function upgrade_branches(
       output_type="input",
       noloss=false
    )
+
+   PowerModels.logger_config!("error")
+
    filename = split(base_network, "/")[end]
    println("$filename")
    filetype = split(lowercase(filename), '.')[end]
@@ -28,7 +31,7 @@ function upgrade_branches(
    if lowercase(output_type) == ".json"
       fileext = ".json"
    end
-   println(fileext)
+   # println(fileext)
    base_dir = base_network[1:end-length(filename)]
 
    # println("base_network: $base_network")
@@ -58,7 +61,7 @@ function upgrade_branches(
    if !("fmax_lfac" in keys(subnet_params))
       subnet_params["fmax_lfac"] = 100.0
    end
-   if :contingency_file in names(base_subnet_df)
+   if "contingency_file" in names(base_subnet_df)
       ctg_filename = base_subnet_df.contingency_file[1]
       subnet_df = DataFrame(
          index=[1,2],
@@ -69,15 +72,6 @@ function upgrade_branches(
          f_max=[subnet_params["fmax"], subnet_params["fmax_lfac"]],
          contingency_file=[ctg_filename, "lfac_$(ctg_filename)"]
       )
-      # subnet_df_fixf = DataFrame(
-      #    index=[1,2],
-      #    file=["$(base_name)$(fileext)", "lfac_$(base_name)$(fileext)"],
-      #    variable_f=[subnet_params["var_f"], false],
-      #    f_base=[fbase, fbase_lfac],
-      #    f_min=[subnet_params["fmin"], subnet_params["fbase_lfac"]],
-      #    f_max=[subnet_params["fmax"], subnet_params["fbase_lfac"]],
-      #    contingency_file=[ctg_filename, "lfac_$(ctg_filename)"]
-      # )
    else
       subnet_df = DataFrame(
          index=[1,2],
@@ -87,14 +81,6 @@ function upgrade_branches(
          f_min=[subnet_params["fmin"], subnet_params["fmin_lfac"]],
          f_max=[subnet_params["fmax"], subnet_params["fmax_lfac"]]
       )
-      # subnet_df_fixf = DataFrame(
-      #    index=[1,2],
-      #    file=["$(base_name)$(fileext)", "lfac_$(base_name)$(fileext)"],
-      #    variable_f=[subnet_params["var_f"], false],
-      #    f_base=[fbase, subnet_params["fbase_lfac"]],
-      #    f_min=[subnet_params["fmin"], subnet_params["fbase_lfac"]],
-      #    f_max=[subnet_params["fmax"], subnet_params["fbase_lfac"]]
-      # )
    end
 
    data = PowerModels.parse_file(base_network)
@@ -102,7 +88,7 @@ function upgrade_branches(
    ctg_br_dict = Dict{Int64, Any}()
 
 
-   if :contingency_file in names(subnet_df)
+   if "contingency_file" in names(subnet_df)
       ctg_list = parse_con_file(base_dir*"/"*subnet_df.contingency_file[1])
 
       for (ctg_idx,ctg) in enumerate(ctg_list)
@@ -120,7 +106,7 @@ function upgrade_branches(
                )
             )[circuit])
 
-            println("br_idx: $(br_idx)")
+            # println("br_idx: $(br_idx)")
             ctg_br_dict[br_idx] = ctg
 
          end
@@ -159,16 +145,16 @@ function upgrade_branches(
       interface_params["smax"] = 50.0
    end
    if !("R" in keys(interface_params))
-      interface_params["R"] = 1.0e-5
+      interface_params["R"] = noloss ? 0 : 1.0e-5
    end
    if !("X" in keys(interface_params))
-      interface_params["X"] = 1.0e-3
+      interface_params["X"] = noloss ? 0 : 1.0e-3
    end
    if !("G" in keys(interface_params))
       interface_params["G"] = 0.0
    end
    if !("B" in keys(interface_params))
-      interface_params["B"] = 1.0e-4
+      interface_params["B"] = noloss ? 0 : 1.0e-4
    end
    if !("transformer" in keys(interface_params))
       interface_params["transformer"] = false
@@ -305,6 +291,7 @@ function upgrade_branches(
             push!(iface_df, interface_params)
             f_area = copy(data["bus"]["$bus"]["area"])
             f_zone = copy(data["bus"]["$bus"]["zone"])
+            f_kv_base = copy(data["bus"]["$bus"]["base_kv"])
 
             # LFAC "to bus" interface
             iface_index = 2
@@ -315,6 +302,7 @@ function upgrade_branches(
             push!(iface_df, interface_params)
             t_area = copy(data["bus"]["$bus"]["area"])
             t_zone = copy(data["bus"]["$bus"]["zone"])
+            t_kv_base = copy(data["bus"]["$bus"]["base_kv"])
 
             for (bus_idx,bus) in data["bus"]
                bus["name"] = split(bus["name"], ";")[1]
@@ -358,7 +346,8 @@ function upgrade_branches(
                   "vm"=>1.0,
                   "name"=>"Bus 1\tLF",
                   "area"=>f_area,
-                  "zone"=>f_zone
+                  "zone"=>f_zone,
+                  "base_kv"=>f_kv_base
                ),
                "2"=>Dict{String, Any}(
                   "bus_type"=>1,
@@ -370,7 +359,8 @@ function upgrade_branches(
                   "vm"=>1.0,
                   "name"=>"Bus 2\tLF",
                   "area"=>t_area,
-                  "zone"=>t_zone
+                  "zone"=>t_zone,
+                  "base_kv"=>t_kv_base
                ),
                "$seriescomp_bus"=>Dict{String, Any}(
                   "bus_type"=>1,
@@ -382,7 +372,8 @@ function upgrade_branches(
                   "vm"=>1.0,
                   "name"=>"SC Bus\tLF",
                   "area"=>data["bus"]["$seriescomp_bus"]["area"],
-                  "zone"=>data["bus"]["$seriescomp_bus"]["zone"]
+                  "zone"=>data["bus"]["$seriescomp_bus"]["zone"],
+                  "base_kv"=>data["bus"]["$seriescomp_bus"]["base_kv"]
                )
             )
             # if "apply_ang_lim" in keys(data["bus"]["$seriescomp_bus"])
@@ -470,16 +461,18 @@ function upgrade_branches(
             interface_params["bus"] = base_f_bus
             push!(iface_df, interface_params)
 
-            f_area = data["bus"]["$base_f_bus"]["area"]
-            f_zone = data["bus"]["$base_f_bus"]["zone"]
+            f_area = copy(data["bus"]["$base_f_bus"]["area"])
+            f_zone = copy(data["bus"]["$base_f_bus"]["zone"])
+            f_kv_base = copy(data["bus"]["$base_f_bus"]["base_kv"])
             iface_index = 2
             base_t_bus = branch["t_bus"]
             interface_params["index"] = iface_index
             interface_params["subnet_index"] = subnet_index
             interface_params["bus"] = base_t_bus
             push!(iface_df, interface_params)
-            t_area = data["bus"]["$base_t_bus"]["area"]
-            t_zone = data["bus"]["$base_t_bus"]["zone"]
+            t_area = copy(data["bus"]["$base_t_bus"]["area"])
+            t_zone = copy(data["bus"]["$base_t_bus"]["zone"])
+            t_kv_base = copy(data["bus"]["$base_t_bus"]["base_kv"])
             for (bus_idx,bus) in data["bus"]
                if "name" in keys(bus)
                   bus["name"] = split(bus["name"], ";")[1]
@@ -517,7 +510,8 @@ function upgrade_branches(
                   "vm"=>1.0,
                   "name"=>"Bus 1\tLF",
                   "area"=>f_area,
-                  "zone"=>f_zone
+                  "zone"=>f_zone,
+                  "base_kv"=>f_kv_base
                ),
                "2"=>Dict{String, Any}(
                   "bus_type"=>1,
@@ -529,7 +523,8 @@ function upgrade_branches(
                   "vm"=>1.0,
                   "name"=>"Bus 2\tLF",
                   "area"=>t_area,
-                  "zone"=>t_zone
+                  "zone"=>t_zone,
+                  "base_kv"=>t_kv_base
                )
             )
             # Branch Data
@@ -604,7 +599,7 @@ function upgrade_branches(
          CSV.write("$output_dir/subnetworks.csv", subnet_df)
 
          # println("output_dir: $output_dir")
-         if :contingency_file in names(subnet_df)
+         if "contingency_file" in names(subnet_df)
             write_branch_ctg_file(ctg_br_dict_tmp, output_dir*"/"*ctg_filename)
             write_branch_ctg_file(lfac_ctg_br_dict, output_dir*"/"*"lfac_"*ctg_filename)
          end
@@ -645,10 +640,19 @@ function write_branch_ctg_file(ctg_dict, filename)
    end
 end
 
-function change_angle_lims(base_network, output_location, angle_lim_deg, indices=[])
+function change_angle_lims(base_network, output_location, angle_lim_deg, indices=[]; output_type=".json")
    filename = split(base_network, "/")[end]
    prefix = base_network[1:(end-length(filename))]
    println("$filename")
+
+   filetype = split(lowercase(filename), '.')[end]
+   base_name = filename[1:(end-length(filetype)-1)]
+   (base_name, filetype) = splitext(filename)
+   filetype = Unicode.normalize(filetype, casefold=true)
+   fileext = filetype == ".m" ? filetype : ".json"
+   if lowercase(output_type) == ".json"
+      fileext = ".json"
+   end
 
    output_dir = "$output_location/"
    if !isdir(output_dir)
@@ -666,9 +670,16 @@ function change_angle_lims(base_network, output_location, angle_lim_deg, indices
          branch["angmax"] = angle_lim_deg * pi/180.0
       end
    end
-   io = open("$output_dir/$filename", "w");
-   export_matpower(io, data)
-   close(io)
+   if fileext == ".m"
+      io = open("$output_dir/$(base_name).m", "w");
+      export_matpower(io, data)
+      close(io)
+   else
+      stringnet = JSON.json(data)
+      open("$output_dir/$(base_name)$(fileext)", "w") do f
+         write(f, stringnet)
+      end
+   end
 
    if isfile("$prefix/lfac_$filename")
       data = PowerModels.parse_file("$prefix/lfac_$filename")
@@ -678,9 +689,16 @@ function change_angle_lims(base_network, output_location, angle_lim_deg, indices
             branch["angmax"] = angle_lim_deg * pi/180.0
          end
       end
-      io = open("$output_dir/lfac_$filename", "w");
-      export_matpower(io, data)
-      close(io)
+      if fileext == ".m"
+         io = open("$output_dir/$(base_name).m", "w");
+         export_matpower(io, data)
+         close(io)
+      else
+         stringnet = JSON.json(data)
+         open("$output_dir/$(base_name)$(fileext)", "w") do f
+            write(f, stringnet)
+         end
+      end
    end
 end
 

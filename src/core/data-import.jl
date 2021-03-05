@@ -7,7 +7,7 @@ Reads a network folder and builds the mn_data dictionary.
 # Arguments
 - `folder::String`: the path to the folder containing all the network data
 """
-function read_sn_data(folder::String)
+function read_sn_data(folder::String; kwargs...)
    directory_path = "$folder/"
    subnet_file = "$(directory_path)/subnetworks.csv"
 
@@ -32,7 +32,7 @@ function read_sn_data(folder::String)
 
    end
 
-   mn_data = make_mn_data(subnets, interfaces, networks)
+   mn_data = make_mn_data(subnets, interfaces, networks; kwargs...)
 
    return mn_data
 end
@@ -54,7 +54,8 @@ Builds the mn_data dictionary from the specifications of the subnetworks and int
 function make_mn_data(
    subnetworks,
    interfaces,
-   networks::Dict{String,Any}
+   networks::Dict{String,Any};
+   no_converter_loss::Bool=false
    )
 
    mn_data = Dict{String,Any}(
@@ -103,7 +104,7 @@ function make_mn_data(
    interface_bus = Array{Tuple{Int64,Int64},1}()
    for interface in eachrow(interfaces)
       # Check that we have transformer/filter branch data in the interfaces file and for this terminal specifically
-      if all(indexin(["R","X","G","B"], names(interfaces)) .!= nothing) && !(any(x -> ismissing(x), interface[["R","X","G","B"]])) && !(interface.R == 0 && interface.X == 0)
+      if !no_converter_loss && all(indexin(["R","X","G","B"], names(interfaces)) .!= nothing) && !(any(x -> ismissing(x), interface[["R","X","G","B"]])) && !(interface.R == 0 && interface.X == 0)
          # First create the converter terminal buses. New bus index is '90X',
          # where X is the existing bus, e.g. bus 334 gets terminal bus 90334.
          # If 90X is already a bus in the network, try 900X, and so on.
@@ -125,7 +126,7 @@ function make_mn_data(
          mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["vm"] = copy(mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(interface.bus)"]["vm"])
          if "base_kv" in names(interfaces)
             mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["base_kv"] = interface.base_kv
-         else
+         elseif "base_kv" in keys(mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(interface.bus)"])
             mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["base_kv"] = copy(mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(interface.bus)"]["base_kv"])
          end
          # Include current limit in bus data
@@ -235,12 +236,12 @@ function make_mn_data(
          push!(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"], (interface.index,interface_bus[1],interface_bus[2]))
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"][interface.index] = converter_params[:imax]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"][interface.index] = converter_params[:vmax]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"][interface.index]   = converter_params[:c1]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"][interface.index]   = converter_params[:c2]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"][interface.index]   = converter_params[:c3]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"][interface.index]  = converter_params[:sw1]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"][interface.index]  = converter_params[:sw2]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"][interface.index]  = converter_params[:sw3]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c1]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c2]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c3]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw1]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw2]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw3]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"][interface.index]    = converter_params[:M]
       end
       # println("converter_imax: $(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"])")

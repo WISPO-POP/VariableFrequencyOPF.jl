@@ -61,7 +61,7 @@ function multifrequency_opf(
    )
 
    println("read_sn_data($folder)")
-   mn_data = read_sn_data(folder)
+   mn_data = read_sn_data(folder, no_converter_loss=no_converter_loss)
 
    folder_split = split(rstrip(folder,'/'),"/")
    folder_split = folder_split[folder_split .!= ""]
@@ -73,10 +73,6 @@ function multifrequency_opf(
    println("output folder: $output_folder")
    if !isdir(output_folder)
       mkpath(output_folder)
-   end
-
-   if no_converter_loss
-      override_param = create_noloss_dict(mn_data, existing_override=override_param)
    end
 
    (output_dict, res_summary, solution_pm, binding_cnstr_dict) = multifrequency_opf(
