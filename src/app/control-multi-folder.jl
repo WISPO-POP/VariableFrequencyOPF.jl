@@ -120,8 +120,11 @@ function control_comparison(
       end
    end
    if output_to_files
-      println("Saving results at results_dict_allplots.json")
+      println("Saving results at $(output_folder)/results_dict_allplots.json")
       results_dict_string = JSON.json(results_dict_allplots)
+      if !isdir(output_folder)
+         mkpath(output_folder)
+      end
       open("$(output_folder)/results_dict_allplots.json", "w") do f
          write(f, results_dict_string)
       end
