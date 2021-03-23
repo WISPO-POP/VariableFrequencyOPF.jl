@@ -1,3 +1,0 @@
-index,file,variable_f,f_base,f_min,f_max
-1,fault_4032_4044.m,false,50.0,50.0,50.0
-2,lfac_fault_4032_4044.m,true,50.0,0.1,100.0
