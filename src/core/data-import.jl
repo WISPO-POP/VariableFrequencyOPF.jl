@@ -11,13 +11,13 @@ function read_sn_data(folder::String; kwargs...)
    directory_path = "$folder/"
    subnet_file = "$(directory_path)/subnetworks.csv"
 
-   subnets = CSV.File(subnet_file) |> DataFrame!
+   subnets = CSV.read(subnet_file, DataFrame)
 
    if nrow(subnets) == 1
       interfaces = DataFrame(index=Int64[],file=String[],variable_f=Bool[],f_base=Float64[],f_min=Float64[],fmax=Float64[])
    else
       interface_file = "$(directory_path)/interfaces.csv"
-      interfaces = CSV.File(interface_file) |> DataFrame!
+      interfaces = CSV.read(interface_file, DataFrame)
    end
 
    networks = Dict{String,Any}()
