@@ -24,12 +24,16 @@ We hope that this package is useful to you. If you use it in published work, we 
 }
 ```
 ## Usage
-Add this package with the following command in the Julia REPL:
-```julia
+This package requires a Julia installation (≥1.5). See the Julia website for downloads and instructions: [https://julialang.org/downloads/](https://julialang.org/downloads/)
+
+From a Julia terminal, this package can be installed through the package manager by providing the link to the repository. The package manager is accessed by typing the right bracket `]` in the Julia terminal.
+
+Add this package with the following command in the Julia terminal:
+```
 ] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
 ```
 Or, if you prefer SSH and have it configured, you can use this:
-```julia
+```
 ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
 ```
 
