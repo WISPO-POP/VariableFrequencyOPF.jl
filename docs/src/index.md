@@ -3,27 +3,46 @@ CurrentModule = VariableFrequencyOPF
 ```
 
 # VariableFrequencyOPF.jl
-AC optimal power flow for networks with multiple frequencies, with each frequency as an optimization variable.
+This package models and solves the AC optimal power flow (OPF) problem for networks with multiple frequencies, with each frequency as an optimization variable. This is useful for analyzing the system-level impacts of point-to-point and multi-terminal low frequency AC (LFAC) and high voltage DC (HVDC) upgrades.
 
-One main goal of this package is a flexible and extensible implementation which can fully accommodate the multiple and variable frequency OPF formulation with power flow control between frequency areas. This package allows additional modifications to the constraints and objective function as the analysis develops.
+One main goal of this package is a flexible and extensible implementation which can fully accommodate the multi-frequency OPF formulation, in addition to power flow control between frequency areas. The power conversion devices which link these areas can be modeled with or without internal losses, filters, and transformers.
 
-Another goal is a smooth extension of existing data formats to the case of multiple and variable frequencies. To this end, it is important that the software can import industry standard steady state network modeling formats with the minimum necessary additional specification of the parameters which are new to this framework.
+Another goal is a smooth extension of existing data formats to multi-frequency studies. The software supports industry standard steady state network modeling formats (PSS®E, Matpower, and PowerModels). Minimal additional parameter specifications are required: the frequency or allowable range of frequencies of each area, the connections between them, and the optional converter parameters.
+
+We hope that this package is useful to you. If you use it in published work, we ask that you would kindly include a mention of it and cite this [publication](https://arxiv.org/abs/2103.06996):
+```
+@misc{sehloff2021low,
+      title={Low Frequency AC Transmission Upgrades with Optimal Frequency Selection},
+      author={David Sehloff and Line Roald},
+      year={2021},
+      eprint={2103.06996},
+      archivePrefix={arXiv},
+      primaryClass={eess.SY}
+}
+```
 ## Getting Started
-Add this package with the following command in the Julia REPL:
+This package requires a Julia installation (≥1.5). See the Julia website for downloads and instructions: [https://julialang.org/downloads/](https://julialang.org/downloads/)
 
-    ] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
+From a Julia terminal, this package can be installed through the package manager by providing the link to the repository. The package manager is accessed by typing the right bracket `]` in the Julia terminal.
 
-or
-
-    ] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
+Add this package with the following command in the Julia terminal:
+```
+] add https://github.com/WISPO-POP/VariableFrequencyOPF.jl.git
+```
+Or, if you prefer SSH and have it configured, you can use this:
+```
+] add git@github.com:WISPO-POP/VariableFrequencyOPF.jl.git
+```
 
 Load the package:
-
-    using VariableFrequencyOPF
+```julia
+using VariableFrequencyOPF
+```
 
 You can also run the package tests:
-
-    ] test VariableFrequencyOPF
+```julia
+] test VariableFrequencyOPF
+```
 
 ### Parsing Network Data
 ![Flowchart for parsing](examples/fig/flowchart_parsing.svg)

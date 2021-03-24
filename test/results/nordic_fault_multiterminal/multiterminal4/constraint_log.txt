@@ -1,0 +1,93 @@
+f_min=1
+Added constraints in subnet 2:
+["p_2[(1, 24011, 24021)]² + q_2[(1, 24011, 24021)]² ≤ 196.0"]
+Removed constraints in subnet 1:
+["vm_1[50013] ≤ 1.1"]
+
+f_min=2
+Added constraints in subnet 2:
+["p_2[(2, 24021, 24042)]² + q_2[(2, 24021, 24042)]² ≤ 196.0"]
+Removed constraints in subnet 1:
+["va_1[4032] - va_1[4042] ≤ 0.6981317007977318"]
+
+f_min=8
+Removed constraints in subnet 2:
+["vm_2[24043] ≥ 0.9"]
+
+f_min=18
+Added constraints in subnet 2:
+["vm_2[24021] ≤ 1.1"]
+
+f_min=21
+Added constraints in subnet 2:
+["vm_2[24043] ≤ 1.1"]
+
+f_min=29
+Added constraints in subnet 2:
+["-va_2[24042] + va_2[24021] ≤ 0.6981317007977318"]
+Removed constraints in subnet 2:
+["p_2[(2, 24021, 24042)]² + q_2[(2, 24021, 24042)]² ≤ 196.0"]
+
+f_min=31
+Added constraints in subnet 1:
+["va_1[4032] - va_1[4042] ≤ 0.6981317007977318"]
+
+f_min=33
+Added constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+Added constraints in subnet 1:
+["vm_1[50013] ≤ 1.1"]
+Removed constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+
+f_min=35
+Added constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+Added constraints in subnet 1:
+["vm_1[1021] ≤ 1.1"]
+Removed constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+
+f_min=36
+Added constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+Removed constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+
+f_min=37
+Added constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+Removed constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+
+f_min=39
+Added constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+Removed constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+
+f_min=40
+Added constraints in subnet 1:
+["p_1[(76, 1013, 50002)]² + q_1[(76, 1013, 50002)]² ≤ 36.0"]
+Added constraints in subnet 1:
+["p_1[(94, 50014, 4042)]² + q_1[(94, 50014, 4042)]² ≤ 49.0"]
+Added constraints in subnet 1:
+["pg_1[14] ≤ 6.3"]
+Removed constraints in subnet 1:
+["p_1[(77, 1014, 50003)]² + q_1[(77, 1014, 50003)]² ≤ 49.0"]
+Removed constraints in subnet 1:
+["p_1[(93, 50013, 4041)]² + q_1[(93, 50013, 4041)]² ≤ 9.0"]
+
+f_min=41
+Removed constraints in subnet 1:
+["qg_1[13] ≤ 3.0"]
+
+f_min=43
+Added constraints in subnet 1:
+["vm_1[1022] ≤ 1.1"]
+
+f_min=49
+Added constraints in subnet 2:
+["va_2[24011] - va_2[24021] ≤ 0.6981317007977318"]
+Removed constraints in subnet 2:
+["p_2[(1, 24011, 24021)]² + q_2[(1, 24011, 24021)]² ≤ 196.0"]
