@@ -220,7 +220,14 @@ function multifrequency_opf(
    ref = Dict{Int64,Any}()
    for (subnet_idx,subnet) in mn_data["sn"]
       subnet_idx_int = parse(Int64,subnet_idx)
-      ref[subnet_idx_int] = PowerModels.build_ref(subnet)[:nw][0]
+
+      ref_temp = PowerModels.build_ref(subnet)
+      if :it in keys(ref_temp)
+         ref[subnet_idx_int] = ref_temp[:it][:pm][:nw][0]
+      else
+         ref[subnet_idx_int] = ref_temp[:nw][0]
+      end
+      
    end
 
    # note: ref contains all the relevant system parameters needed to build the OPF model
