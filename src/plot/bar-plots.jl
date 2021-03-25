@@ -482,21 +482,6 @@ function plot_results_dicts_bar(
       end
    end
 
-   results_string = JSON.json(br_results_all)
-   open("./br_results_temp.json", "w") do f
-      write(f, results_string)
-   end
-
-   results_string = JSON.json(br_results_all_sorted)
-   open("./br_results_temp_sorted.json", "w") do f
-      write(f, results_string)
-   end
-
-   results_string = JSON.json(plotlabels)
-   open("./plotlabels.json", "w") do f
-      write(f, results_string)
-   end
-
    for (label,results) in results_dict_allplots[1]
       if (label == "status") || (label == "subnet")
          continue

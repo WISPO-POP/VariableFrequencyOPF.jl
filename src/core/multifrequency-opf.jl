@@ -57,16 +57,26 @@ function multifrequency_opf(
    no_converter_loss::Bool=false,
    uniform_gen_scaling::Bool=false,
    unbounded_pg::Bool=false,
-   output_to_files::Bool=true
+   output_to_files::Bool=true,
+   output_location_base::String="",
+   output_top_folder::String=""
    )
 
    println("read_sn_data($folder)")
    mn_data = read_sn_data(folder, no_converter_loss=no_converter_loss)
 
-   folder_split = split(rstrip(folder,'/'),"/")
-   folder_split = folder_split[folder_split .!= ""]
-   toplevels = folder_split[1:end-3]
-   output_folder = join([("$i/") for i in toplevels])*"results/$(folder_split[end-1])/$(folder_split[end])$suffix"
+   folder = abspath(folder)
+   if length(output_location_base) > 0
+      output_folder = output_location_base
+   else
+      folder_split = splitpath(folder)
+      toplevels = folder_split[1:end-3]
+      output_folder = joinpath(toplevels...,"results/$(folder_split[end-1])/$(folder_split[end])$suffix")
+   end
+   output_folder = joinpath(output_folder, output_top_folder)
+   if !isdir(output_folder)
+      mkpath(output_folder)
+   end
 
    # toplevel = split(folder,"/")[1]
    # output_folder = join([(i==toplevel ? "results/" : "$i/") for i in split(folder,"/")])*suffix
@@ -227,7 +237,7 @@ function multifrequency_opf(
       else
          ref[subnet_idx_int] = ref_temp[:nw][0]
       end
-      
+
    end
 
    # note: ref contains all the relevant system parameters needed to build the OPF model

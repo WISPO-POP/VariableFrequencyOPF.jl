@@ -182,6 +182,46 @@ end
     @test isfile("results/results/nordic_fault/br27/plots/vs subnet 2 frequency (Hz)/subnet1/subnet 1 line loss vs subnet 2 frequency (Hz).pdf")
     @test isfile("results/results/nordic_fault/br27/plots/vs subnet 2 frequency (Hz)/subnet2/subnet 2 converter loss vs subnet 2 frequency (Hz).pdf")
     # @test isfile("results/nordic_fault/multiterminal_sweep/plots/vs subnet 2 frequency (Hz)/nw/2/branch/1/nw 2 branch 1 pf vs subnet 2 frequency (Hz).pdf")
+
+    # Now test the direct application of a data dictionary
+    output_results_folder = "time_0"
+    mn_data = VariableFrequencyOPF.read_sn_data(new_data_file, no_converter_loss=false)
+
+    folder = abspath(new_data_file)
+    folder_split = splitpath(folder)
+    toplevels = folder_split[1:end-3]
+    output_folder = joinpath(toplevels...,"results/$(folder_split[end-1])/$(folder_split[end])")
+    output_folder = joinpath(output_folder, output_results_folder)
+    if !isdir(output_folder)
+        mkpath(output_folder)
+    end
+
+    (results_dicts[1], output_plots[1]) = VariableFrequencyOPF.frequency_ranges(
+        fmin,
+        fmax,
+        2,
+        mn_data,
+        output_folder,
+        objective,
+        [("frequency (Hz)",2)],
+        [
+        ("nw",2,"branch",1,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",2,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",3,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",4,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",5,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",5,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",6,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",7,["pt","pf","qt","qf"]),
+        ("nw",2,"branch",8,["pt","pf","qt","qf"])
+        ];
+        gen_areas=[2,3],
+        area_transfer=[1,2]
+    )
+    @test isfile("results/results/nordic_fault/br27/time_0/plots/vs subnet 2 frequency (Hz)/total/total generation in areas 2 and 3 (p.u.) vs subnet 2 frequency (Hz).pdf")
+    @test isfile("results/results/nordic_fault/br27/time_0/plots/vs subnet 2 frequency (Hz)/subnet1/subnet 1 line loss vs subnet 2 frequency (Hz).pdf")
+    @test isfile("results/results/nordic_fault/br27/time_0/plots/vs subnet 2 frequency (Hz)/subnet2/subnet 2 converter loss vs subnet 2 frequency (Hz).pdf")
+
     try
         rm("results",force=true,recursive=true)
     catch IOError

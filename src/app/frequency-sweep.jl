@@ -1,29 +1,31 @@
 
 """
     function frequency_ranges(
-        f_min,
-        f_max,
-        subnet::Int64,
-        directory::String,
-        objective::String,
-        x_axis::Array,
-        y_axis::Array;
-        gen_areas=Int64[],
-        area_transfer=Int64[],
-        gen_zones=[],
-        zone_transfer=[],
-        plot_vert_line::Tuple=([],""),
-        plot_horiz_line::Tuple=([],""),
-        xlimits::Array{Any,1}=[],
-        ylimits::Array{Any,1}=[],
-        output_plot_label::Tuple{String,String}=("",""),
-        scopf::Bool=false,
-        contingency::Tuple=(0,),
-        k_cond=[],
-        k_ins=[],
-        scale_load=1.0,
-        scale_areas=Int64[],
-        no_converter_loss=false
+      f_min,
+      f_max,
+      subnet::Int64,
+      directory::String,
+      objective::String,
+      x_axis::Array,
+      y_axis::Array;
+      gen_areas=Int64[],
+      area_transfer=Int64[],
+      gen_zones=[],
+      zone_transfer=[],
+      plot_vert_line::Tuple=([],""),
+      plot_horiz_line::Tuple=([],""),
+      xlimits::Array{Any,1}=[],
+      ylimits::Array{Any,1}=[],
+      output_plot_label::Tuple{String,String}=("",""),
+      scopf::Bool=false,
+      contingency::Int64=0,
+      k_cond=[],
+      k_ins=[],
+      scale_load=1.0,
+      scale_areas=Int64[],
+      no_converter_loss=false,
+      output_location_base="",
+      output_results_folder=""
     )
 
 Models and solves an OPF with frequency in specified ranges between `f_min` and `f_max`.
@@ -32,7 +34,7 @@ Models and solves an OPF with frequency in specified ranges between `f_min` and 
 - `f_min`: lower bounds on frequency, one for each point in the frequency sweep
 - `f_max`: upper bounds on frequency, one for each point in the frequency sweep. Must have the same length as `f_min`.
 - `subnet::Int64`: subnetwork for which the frequency bounds are applied
-- `directory::String`: the directory containing all subnetwork data, *subnetworks.csv*, and *interfaces.csv*
+- `folder::String`: the directory containing all subnetwork data, *subnetworks.csv*, and *interfaces.csv*
 - `objective::String`: the objective function to use, from the following:
    - "mincost": minimize generation cost
    - "areagen": minimize generation in the areas specified in `gen_areas`
@@ -59,12 +61,14 @@ Models and solves an OPF with frequency in specified ranges between `f_min` and 
 - `scale_load`: factor for scaling the load in the frequency sweep. Default 1.0.
 - `scale_areas`: array of integer area indices for which the load scaling factor `scale_load` should be applied. Applies to all areas if this array is empty. Default Int64[].
 - `no_converter_loss`: override all converter loss parameters specified in the data and replace them with the the lossless converter model.
+- `output_location_base`: location in which to save the results and plots. If not specified, a folder called `results` will be created in the folder one level above the data folder.
+- `output_results_folder`: specific folder in which to save the results, one level below `output_location_base`, if specified.
 """
 function frequency_ranges(
       f_min,
       f_max,
       subnet::Int64,
-      directory::String,
+      folder::String,
       objective::String,
       x_axis::Array,
       y_axis::Array;
@@ -83,8 +87,85 @@ function frequency_ranges(
       k_ins=[],
       scale_load=1.0,
       scale_areas=Int64[],
-      no_converter_loss=false
+      no_converter_loss=false,
+      output_location_base="",
+      output_results_folder=""
    )
+   mn_data = read_sn_data(folder, no_converter_loss=no_converter_loss)
+
+   folder = abspath(folder)
+   if length(output_location_base) > 0
+      output_folder = output_location_base
+   else
+      folder_split = splitpath(folder)
+      toplevels = folder_split[1:end-3]
+      output_folder = joinpath(toplevels...,"results/$(folder_split[end-1])/$(folder_split[end])")
+   end
+   output_folder = joinpath(output_folder, output_results_folder)
+   if !isdir(output_folder)
+      mkpath(output_folder)
+   end
+   println("output location: $output_folder")
+
+   (results_dict, output_plot) = frequency_ranges(
+      f_min,
+      f_max,
+      subnet,
+      mn_data,
+      output_folder,
+      objective,
+      x_axis,
+      y_axis;
+      gen_areas=gen_areas,
+      area_transfer=area_transfer,
+      gen_zones=gen_zones,
+      zone_transfer=zone_transfer,
+      plot_vert_line=plot_vert_line,
+      plot_horiz_line=plot_horiz_line,
+      xlimits=xlimits,
+      ylimits=ylimits,
+      output_plot_label=output_plot_label,
+      scopf=scopf,
+      contingency=contingency,
+      k_cond=k_cond,
+      k_ins=k_ins,
+      scale_load=scale_load,
+      scale_areas=scale_areas,
+      no_converter_loss=no_converter_loss,
+      output_results_folder=output_results_folder
+   )
+   return (results_dict, output_plot)
+end
+
+function frequency_ranges(
+      f_min,
+      f_max,
+      subnet::Int64,
+      mn_data::Dict{String,Any},
+      output_folder::String,
+      objective::String,
+      x_axis::Array,
+      y_axis::Array;
+      gen_areas=Int64[],
+      area_transfer=Int64[],
+      gen_zones=[],
+      zone_transfer=[],
+      plot_vert_line::Tuple=([],""),
+      plot_horiz_line::Tuple=([],""),
+      xlimits::Array{Any,1}=[],
+      ylimits::Array{Any,1}=[],
+      output_plot_label::Tuple{String,String}=("",""),
+      scopf::Bool=false,
+      contingency::Int64=0,
+      k_cond=[],
+      k_ins=[],
+      scale_load=1.0,
+      scale_areas=Int64[],
+      no_converter_loss=false,
+      output_results_folder=""
+   )
+
+
    suffix=""
    if scopf
       params = ([["sn",contingency,"sn",subnet,"f_min"],["sn",contingency,"sn",subnet,"f_max"]],[f_min, f_max])
@@ -137,29 +218,33 @@ function frequency_ranges(
    else
       dc_params = ()
    end
+
+   output_folder = joinpath(output_folder*suffix, output_results_folder)
+
    # println("params:")
    # println(params)
+
    (results_dict, output_plot) = run_multiple_params(
-      directory,
-      objective,
-      x_axis,
-      y_axis,
-      params,
-      gen_areas,
-      area_transfer,
-      gen_zones,
-      zone_transfer,
-      plot_vert_line,
-      plot_horiz_line,
-      xlimits,
-      ylimits,
-      output_plot_label,
-      scopf,
-      contingency,
-      dc_params,
-      suffix,
-      no_converter_loss=no_converter_loss
-   )
+         mn_data,
+         output_folder,
+         objective,
+         x_axis,
+         y_axis,
+         params,
+         gen_areas,
+         area_transfer,
+         gen_zones,
+         zone_transfer,
+         plot_vert_line,
+         plot_horiz_line,
+         xlimits,
+         ylimits,
+         output_plot_label,
+         scopf,
+         contingency,
+         dc_params;
+         output_results_folder=output_results_folder
+      )
    # for config in hvdc_config
    #
    # end

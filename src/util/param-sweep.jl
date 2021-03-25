@@ -1,8 +1,8 @@
 function run_multiple_params(
-      folder,
-      objective,
-      x_axis,
-      y_axis,
+      folder::String,
+      objective::String,
+      x_axis::Array,
+      y_axis::Array,
       params,
       gen_areas=Int64[],
       area_transfer=Int64[],
@@ -17,19 +17,75 @@ function run_multiple_params(
       ctg=0,
       points_params=(),
       suffix="";
-      no_converter_loss::Bool=false
+      no_converter_loss::Bool=false,
+      output_location_base="",
+      output_results_folder=""
    )
-   folder_split = split(rstrip(folder,'/'),"/")
-   folder_split = folder_split[folder_split .!= ""]
-   toplevels = folder_split[1:end-3]
-   output_folder = join([("$i/") for i in toplevels])*"results/$(folder_split[end-1])/$(folder_split[end])$suffix"
+
+   mn_data = read_sn_data(folder, no_converter_loss=no_converter_loss)
+
+   folder = abspath(folder)
+   if length(output_location_base) > 0
+      output_folder = output_location_base
+   else
+      folder_split = splitpath(folder)
+      toplevels = folder_split[1:end-3]
+      output_folder = joinpath(toplevels...,"results/$(folder_split[end-1])/$(folder_split[end])$suffix")
+   end
+   output_folder = joinpath(output_folder, output_results_folder)
    if !isdir(output_folder)
       mkpath(output_folder)
-   # else
-   #    rm(output_folder, recursive=true)
-   #    mkdir(output_folder)
    end
    println("output location: $output_folder")
+
+   (results_dict, output_plot) = run_multiple_params(
+         mn_data,
+         output_folder,
+         objective,
+         x_axis,
+         y_axis,
+         params,
+         gen_areas,
+         area_transfer,
+         gen_zones,
+         zone_transfer,
+         vert_line,
+         horiz_line,
+         xlimits,
+         ylimits,
+         output_plot_label,
+         scopf,
+         ctg,
+         points_params;
+         output_results_folder
+      )
+
+   return results_dict, output_plot
+end
+
+function run_multiple_params(
+      mn_data::Dict{String,Any},
+      output_folder::String,
+      objective::String,
+      x_axis::Array,
+      y_axis::Array,
+      params,
+      gen_areas=Int64[],
+      area_transfer=Int64[],
+      gen_zones=Int64[],
+      zone_transfer=Int64[],
+      vert_line=([],""),
+      horiz_line=([],""),
+      xlimits=[],
+      ylimits=[],
+      output_plot_label=("",""),
+      scopf=false,
+      ctg=0,
+      points_params=();
+      output_results_folder=""
+   )
+
+   output_folder = joinpath(output_folder, output_results_folder)
 
    (results_dict, subnet_arr,
    summary_df,
@@ -37,7 +93,7 @@ function run_multiple_params(
    constraintlog,
    x_label_arr,
    constraint_transitions) = apply_params(
-      folder,
+      mn_data,
       output_folder,
       objective,
       x_axis,
@@ -54,16 +110,14 @@ function run_multiple_params(
       output_plot_label,
       scopf,
       ctg,
-      false,
-      no_converter_loss=no_converter_loss
+      false
    )
-
    if length(points_params) > 0
       (points_dict, _,
       pts_summary_df,
       _,_,_,_
       ) = apply_params(
-         folder,
+         mn_data,
          output_folder,
          objective,
          x_axis,
@@ -80,8 +134,7 @@ function run_multiple_params(
          output_plot_label,
          scopf,
          ctg,
-         true,
-         no_converter_loss=no_converter_loss
+         true
       )
       # concatenate summary dataframes
       summary_df = vcat(summary_df, pts_summary_df)
@@ -157,11 +210,11 @@ function run_multiple_params(
 end
 
 function apply_params(
-   folder,
-   output_folder,
-   objective,
-   x_axis,
-   y_axis,
+   folder::String,
+   output_folder::String,
+   objective::String,
+   x_axis::Array,
+   y_axis::Array,
    params,
    gen_areas,
    area_transfer,
@@ -176,6 +229,60 @@ function apply_params(
    ctg,
    pts_param=false;
    no_converter_loss::Bool=false
+)
+
+   mn_data = read_sn_data(folder, no_converter_loss=no_converter_loss)
+
+   (
+   results_dict,
+   subnet_arr,
+   summary_df,
+   binding_cnstr_fulldict,
+   constraintlog,
+   x_label_arr,
+   constraint_transitions
+   ) = apply_params(
+      mn_data,
+      output_folder,
+      objective,
+      x_axis,
+      y_axis,
+      params,
+      gen_areas,
+      area_transfer,
+      gen_zones,
+      zone_transfer,
+      vert_line,
+      horiz_line,
+      xlimits,
+      ylimits,
+      output_plot_label,
+      scopf,
+      ctg,
+      pts_param
+   )
+   return results_dict, subnet_arr, summary_df, binding_cnstr_fulldict, constraintlog, x_label_arr, constraint_transitions
+end
+
+function apply_params(
+   mn_data::Dict{String,Any},
+   output_folder::String,
+   objective::String,
+   x_axis::Array,
+   y_axis::Array,
+   params,
+   gen_areas,
+   area_transfer,
+   gen_zones,
+   zone_transfer,
+   vert_line,
+   horiz_line,
+   xlimits,
+   ylimits,
+   output_plot_label,
+   scopf,
+   ctg,
+   pts_param=false
 )
    (p_keys,p_values)=params
    override_param = Dict{Any, Any}()
@@ -195,24 +302,35 @@ function apply_params(
          # println("val: $(value[i])")
          set_nested!(override_param, string.(p_keys[val_idx]), value[i])
       end
-      println("running $(folder)")
+      # println("running $(folder)")
       # println("override_param: $override_param")
-      if scopf
-         (results, summary_dict, solution_pm, binding_cnstr) = multifrequency_scopf(
-            folder, objective, gen_areas, area_transfer,
-            false, override_param
-         )
-         result = results[ctg]
-         res_summary = summary_dict[ctg]
-      else
-         (result, res_summary, solution_pm, binding_cnstr) = multifrequency_opf(
-            folder, objective,
-            gen_areas=gen_areas, area_interface=area_transfer,
-            gen_zones=gen_zones, zone_interface=zone_transfer,
-            print_results=false, override_param=override_param,
-            no_converter_loss=no_converter_loss
-            )
-      end
+      print_results = false
+      fix_f_override = false
+      direct_pq = true
+      master_subnet = 1
+      start_vals=Dict{String, Dict}("sn"=>Dict())
+      uniform_gen_scaling = false
+      unbounded_pg = false
+      output_to_files = true
+      (result, res_summary, solution_pm, binding_cnstr) = multifrequency_opf(
+         mn_data,
+         output_folder,
+         objective,
+         gen_areas,
+         area_transfer,
+         gen_zones,
+         zone_transfer,
+         print_results,
+         override_param,
+         fix_f_override,
+         direct_pq,
+         master_subnet,
+         start_vals,
+         uniform_gen_scaling,
+         unbounded_pg,
+         output_to_files
+      )
+
       if (length(binding_cnstr_fulldict) == 0)
          # keystring = rstrip(join([p_keys[val_idx][end]*"=$(value[i]); " for (val_idx,value) in enumerate(p_values)]), ';')
          keystring = p_keys[1][end]*"=$(p_values[1][i])"
