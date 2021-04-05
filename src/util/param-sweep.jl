@@ -64,7 +64,7 @@ function run_multiple_params(
 end
 
 function run_multiple_params(
-      mn_data::Dict{String,Any},
+      mn_data::Dict,
       output_folder::String,
       objective::String,
       x_axis::Array,
@@ -265,7 +265,7 @@ function apply_params(
 end
 
 function apply_params(
-   mn_data::Dict{String,Any},
+   mn_data::Dict,
    output_folder::String,
    objective::String,
    x_axis::Array,

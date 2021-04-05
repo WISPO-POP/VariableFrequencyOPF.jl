@@ -143,7 +143,7 @@ function multifrequency_opf(
    end
 
    function multifrequency_opf(
-      mn_data::Dict{String,Any},
+      mn_data::Dict,
       output_folder::String,
       obj::String,
       gen_areas=[],

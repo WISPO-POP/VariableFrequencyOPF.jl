@@ -141,7 +141,7 @@ function frequency_ranges(
       f_min,
       f_max,
       subnet::Int64,
-      mn_data::Dict{String,Any},
+      mn_data::Dict,
       output_folder::String,
       objective::String,
       x_axis::Array,

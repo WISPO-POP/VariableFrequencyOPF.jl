@@ -41,7 +41,7 @@ end
     function make_mn_data(
         subnetworks,
         interfaces,
-        networks::Dict{String,Any}
+        networks::Dict
     )
 
 Builds the mn_data dictionary from the specifications of the subnetworks and interfaces DataFrames and the network data in the networks Dict.
@@ -49,12 +49,12 @@ Builds the mn_data dictionary from the specifications of the subnetworks and int
 # Arguments
 - `subnetworks`: a DataFrame in the format of *subnetworks.csv*, and *interfaces.csv*
 - `interfaces`: a DataFrame in the format of *interfaces.csv*
-- `networks::Dict{String,Any}`: a Dict of all subnetworks, as PowerModels networks
+- `networks::Dict`: a Dict of all subnetworks, as PowerModels networks
 """
 function make_mn_data(
    subnetworks,
    interfaces,
-   networks::Dict{String,Any};
+   networks::Dict;
    no_converter_loss::Bool=false
    )
 
