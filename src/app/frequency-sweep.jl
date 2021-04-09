@@ -219,7 +219,11 @@ function frequency_ranges(
       dc_params = ()
    end
 
-   output_folder = joinpath(output_folder*suffix, output_results_folder)
+   output_folder = joinpath(output_folder, output_results_folder)
+   if !isdir(output_folder)
+      mkpath(output_folder)
+   end
+   println("output location: $output_folder")
 
    # println("params:")
    # println(params)
