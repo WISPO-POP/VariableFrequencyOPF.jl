@@ -247,7 +247,7 @@ function frequency_ranges(
          scopf,
          contingency,
          dc_params;
-         output_results_folder=output_results_folder
+         output_results_folder=""
       )
    # for config in hvdc_config
    #
