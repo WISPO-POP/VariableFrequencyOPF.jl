@@ -132,7 +132,7 @@ function frequency_ranges(
       scale_load=scale_load,
       scale_areas=scale_areas,
       no_converter_loss=no_converter_loss,
-      output_results_folder=output_results_folder
+      output_results_folder=""
    )
    return (results_dict, output_plot)
 end
