@@ -233,7 +233,6 @@ function make_mn_data(
       end
 
       if !(interface.index in mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"])
-         push!(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"], (interface.index,interface_bus[1],interface_bus[2]))
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"][interface.index] = converter_params[:imax]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"][interface.index] = converter_params[:vmax]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c1]
@@ -243,6 +242,9 @@ function make_mn_data(
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw2]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw3]
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"][interface.index]    = converter_params[:M]
+         if (interface.index,interface_bus[1],interface_bus[2]) ∉ mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"]
+            push!(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"], (interface.index,interface_bus[1],interface_bus[2]))
+         end
       end
       # println("converter_imax: $(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"])")
 
