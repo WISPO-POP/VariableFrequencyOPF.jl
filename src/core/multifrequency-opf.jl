@@ -1228,8 +1228,8 @@ function multifrequency_opf(
       output_dict[gen_label] = areagen
    elseif length(gen_areas) > 0
       n_areas = length(gen_areas)
-      areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
-      areagen = [sum(value(pg[subnet_idx][i]) for i in areagens) for (subnet_idx, ref_subnet) in ref]
+      # areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
+      areagen = [sum(value(pg[subnet_idx][i]) for i in keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))) for (subnet_idx, ref_subnet) in ref]
       if n_areas > 1
          gen_areas_sorted = sort(gen_areas)
          gen_label = "generation in areas"
