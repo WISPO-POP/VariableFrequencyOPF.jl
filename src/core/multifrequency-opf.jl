@@ -860,9 +860,19 @@ function multifrequency_opf(
    summary_idx = 1
    for (subnet_idx, ref_subnet) in ref
       print("\nsubnetwork $(subnet_idx)\n================\n")
-      freq_res = ref_subnet[:variable_f] ? value(f[subnet_idx]) : ref_subnet[:f_base]
-      freq_min = ref_subnet[:variable_f] ? ref_subnet[:f_min] : ref_subnet[:f_base]
-      freq_max = ref_subnet[:variable_f] ? ref_subnet[:f_max] : ref_subnet[:f_base]
+      if :f_fixed in keys(ref_subnet)
+         freq_res = ref_subnet[:f_fixed]
+         freq_min = ref_subnet[:f_min]
+         freq_max = ref_subnet[:f_max]
+      elseif ref_subnet[:variable_f]
+         freq_res = value(f[subnet_idx])
+         freq_min = ref_subnet[:f_min]
+         freq_max = ref_subnet[:f_max]
+      else
+         freq_res = ref_subnet[:f_base]
+         freq_min = ref_subnet[:f_base]
+         freq_max = ref_subnet[:f_base]
+      end
       println("frequency: $(freq_res) Hz\n================\n")
       # Iterate over buses
       bus_load = Dict{Int64,Any}()
@@ -1205,6 +1215,21 @@ function multifrequency_opf(
    if obj=="areagen"
       areagen = [value(area_pg[subnet_idx]) for (subnet_idx, ref_subnet) in ref]
       n_areas = length(gen_areas)
+      if n_areas > 1
+         gen_areas_sorted = sort(gen_areas)
+         gen_label = "generation in areas"
+         for i in 1:(n_areas-2)
+            gen_label *= " $(gen_areas_sorted[i]),"
+         end
+         gen_label *=  " $(gen_areas_sorted[end-1]) and $(gen_areas_sorted[end]) (p.u.)"
+      else
+         gen_label = "generation in areas $(gen_areas[1]) (p.u.)"
+      end
+      output_dict[gen_label] = areagen
+   elseif length(gen_areas) > 0
+      n_areas = length(gen_areas)
+      areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
+      areagen = [sum(value(pg[subnet_idx][i]) for i in areagens) for (subnet_idx, ref_subnet) in ref]
       if n_areas > 1
          gen_areas_sorted = sort(gen_areas)
          gen_label = "generation in areas"

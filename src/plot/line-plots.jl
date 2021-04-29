@@ -452,9 +452,9 @@ function plot_line!(
    end
 
    if length(xvals) > 0
-      # println("xvals: $xvals")
-      # println("x_sorted: $x_sorted")
-      # println("y_sorted: $y_sorted")
+      println("xvals: $xvals")
+      println("x_sorted: $x_sorted")
+      println("y_sorted: $y_sorted")
       plot!(
          plt, xvals, y_sorted[indexin(xvals, x_sorted)],
          line=:scatter,

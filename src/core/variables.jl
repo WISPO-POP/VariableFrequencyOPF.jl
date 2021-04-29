@@ -155,13 +155,18 @@ function add_vars!(
    if ref_subnet[:variable_f]
       ref_subnet[:f_min] = max(ref_subnet[:f_min],0) # don't allow negative frequencies
       ref_subnet[:f_min] = min(ref_subnet[:f_min],ref_subnet[:f_max]) # don't allow minimum larger than maximum
-      f_init = (ref_subnet[:f_min]<=ref_subnet[:f_base]<=ref_subnet[:f_max]) ? ref_subnet[:f_base] : (ref_subnet[:f_min] + ref_subnet[:f_max])/2
-      f[subnet_idx] = @variable(
-         model,
-         base_name="f_$(subnet_idx)",
-         lower_bound=ref_subnet[:f_min],
-         upper_bound=ref_subnet[:f_max],
-         start=f_init
-      )
+      if ref_subnet[:f_min] == ref_subnet[:f_max]
+         ref_subnet[:variable_f] = false
+         ref_subnet[:f_fixed] = ref_subnet[:f_min]
+      else
+         f_init = (ref_subnet[:f_min]<=ref_subnet[:f_base]<=ref_subnet[:f_max]) ? ref_subnet[:f_base] : (ref_subnet[:f_min] + ref_subnet[:f_max])/2
+         f[subnet_idx] = @variable(
+            model,
+            base_name="f_$(subnet_idx)",
+            lower_bound=ref_subnet[:f_min],
+            upper_bound=ref_subnet[:f_max],
+            start=f_init
+         )
+      end
    end
 end

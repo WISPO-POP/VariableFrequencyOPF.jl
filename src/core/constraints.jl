@@ -72,9 +72,14 @@ function add_constraints!(
                # print("shunt $(j) = variable\n")
             end
          end
-      else
+      else #if not a variable frequency subnetwork
+         if :f_fixed in keys(ref_subnet)
+            f_ratio = ref_subnet[:f_fixed]/ref_subnet[:f_base]
+         else
+            f_ratio = 1
+         end
          for (j,shunt) in enumerate(bus_shunts)
-            b_shunt[subnet_idx][i,j] = shunt["bs"]
+            b_shunt[subnet_idx][i,j] = shunt["bs"]*f_ratio
             # print("shunt $(j) = $(shunt["bs"])\n")
          end
       end
@@ -244,16 +249,64 @@ function add_constraints!(
             )
             # print("defined variable G, B\n")
          end
-      else
+      else #if !ref_subnet[:variable_f]
          # The frequency is fixed at the base value and all remaining line parameters are defined as fixed based on the base values at that frequency
          # This also applies if the fixed base frequency is DC and the parameters have been defined at DC.
          # If the subnetwork is DC but the line parameters are defined at a different base frequency,
          # the frequency limits should be set to 0 and variable_f true, which is handled in the clause above.
+         if :f_fixed in keys(ref_subnet)
+            f_ratio = ref_subnet[:f_fixed]/ref_subnet[:f_base]
+         else
+            f_ratio = 1
+         end
 
-         g[subnet_idx][i] = g_base
-         b[subnet_idx][i] = b_base
-         b_fr[subnet_idx][i] = b_fr_base
-         b_to[subnet_idx][i] = b_to_base
+         if f_ratio == 1
+            g[subnet_idx][i] = g_base
+            b[subnet_idx][i] = b_base
+            b_fr[subnet_idx][i] = b_fr_base
+            b_to[subnet_idx][i] = b_to_base
+         else
+            f_base = ref_subnet[:f_base]
+            # Series parameters
+
+            # Identify series L and C from line data
+            # Assumption: the given base line impedance is either
+            # purely inductive (positive) or purely capacitive (negative).
+            # This means that series compensation should be represented in the
+            # model as a separate branch in series
+            x_base = branch["br_x"]
+            if x_base >= 0
+               l_series[subnet_idx][i] = x_base / (2pi*f_base)
+               c_inv_series[subnet_idx][i] = 0
+            else
+               l_series[subnet_idx][i] = 0
+               c_inv_series[subnet_idx][i] = - x_base * (2pi*f_base)
+            end
+            r = branch["br_r"]
+            # Shunt parameters
+            c_fr = b_fr_base / (2pi*f_base)
+            c_to = b_to_base / (2pi*f_base)
+
+            g[subnet_idx][i] = r/(r^2 + (
+               l_series[subnet_idx][i]^2 * (2pi)^2*ref_subnet[:f_fixed]^2
+               + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*ref_subnet[:f_fixed]^2)
+               - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
+               ))
+            b[subnet_idx][i] = -(
+               (
+                  2pi*ref_subnet[:f_fixed]*l_series[subnet_idx][i]
+                  - c_inv_series[subnet_idx][i] / ((2pi)*ref_subnet[:f_fixed])
+                  )
+               /(r^2 + (
+                  l_series[subnet_idx][i]^2 * (2pi)^2*ref_subnet[:f_fixed]^2
+                  + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*ref_subnet[:f_fixed]^2)
+                  - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
+                  )
+               )
+            )
+            b_fr[subnet_idx][i] = 2pi*c_fr*ref_subnet[:f_fixed]
+            b_to[subnet_idx][i] = 2pi*c_to*ref_subnet[:f_fixed]
+         end
 
       end
 
@@ -448,7 +501,7 @@ function add_constraints!(
          for (i,dcline) in ref_subnet[:dcline]
       )
    )
-   if (obj=="mincost") | (obj=="areagen") | (obj=="zonegen")
+   if (obj=="mincost") || (obj=="areagen") || (obj=="zonegen")
       if (obj=="areagen")
          areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
          # println("subnet $subnet_idx")
