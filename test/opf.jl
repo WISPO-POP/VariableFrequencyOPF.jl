@@ -126,8 +126,8 @@ end
     # Minimize generation in areas 2 and 3 with plots including
     # the power flow between areas 1 and 2
     objective = "areagen"
-    fmin = 0:10:50
-    fmax = 0:10:50
+    fmin = 0:10:30
+    fmax = 0:10:30
     results_dicts = Array{Dict}(undef, 1)
     output_plots = Array{Any}(undef, 1)
     (results_dicts[1], output_plots[1]) = VariableFrequencyOPF.frequency_ranges(
@@ -152,31 +152,6 @@ end
         area_transfer=[1,2],
         no_converter_loss=true
     )
-    # subnet_arr = results_dicts[1]["subnet"][1]
-    #
-    # x_axis = ("frequency (Hz)", 2)
-    # output_folder = "results/nordic_fault/multiterminal_sweep/"
-    # vert_line = ([],"")
-    # horiz_line = ([],"")
-    # xlimits = []
-    # ylimits = []
-    # output_plot_label = ("","")
-    # series_labels = ["br27"]
-    # # plot the results
-    # VariableFrequencyOPF.plot_results_dict_line(
-    #     results_dicts,
-    #     subnet_arr,
-    #     x_axis,
-    #     output_folder,
-    #     vert_line,
-    #     horiz_line,
-    #     xlimits,
-    #     ylimits,
-    #     output_plot_label,
-    #     series_labels=series_labels,
-    #     plot_infeasible_boundaries=false,
-    #     color_palette=:Paired_12
-    # )
 
     @test isfile("results/results/nordic_fault/br27/plots/vs subnet 2 frequency (Hz)/total/total generation in areas 2 and 3 (p.u.) vs subnet 2 frequency (Hz).pdf")
     @test isfile("results/results/nordic_fault/br27/plots/vs subnet 2 frequency (Hz)/subnet1/subnet 1 line loss vs subnet 2 frequency (Hz).pdf")

@@ -17,8 +17,9 @@ using CategoricalArrays
 using Plots
 using Plots.PlotMeasures
 using StatsPlots
+# using AmplNLWriter
 import Unicode
-import GR
+# import GR
 import MathOptInterface
 
 include("plot/bar-plots.jl")

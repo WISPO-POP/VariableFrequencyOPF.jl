@@ -48,7 +48,7 @@ function multifrequency_opf(
    gen_zones=[],
    zone_interface=[],
    print_results::Bool=false,
-   override_param::Dict{Any}=Dict(),
+   override_param::Dict=Dict(),
    fix_f_override::Bool=false,
    direct_pq::Bool=true,
    master_subnet::Int64=1,
@@ -115,7 +115,7 @@ function multifrequency_opf(
       gen_zones,
       zone_interface,
       print_results::Bool,
-      override_param::Dict{Any}=Dict(),
+      override_param::Dict=Dict(),
       fix_f_override::Bool=false,
       direct_pq::Bool=true,
       master_subnet::Int64=1,
@@ -151,7 +151,7 @@ function multifrequency_opf(
       gen_zones=[],
       zone_interface=[],
       print_results::Bool=false,
-      override_param::Dict{Any}=Dict(),
+      override_param::Dict=Dict(),
       fix_f_override::Bool=false,
       direct_pq::Bool=true,
       master_subnet::Int64=1,
@@ -179,11 +179,10 @@ function multifrequency_opf(
    ipopt_log_to_file = true
    ipopt_file_log_level = 3
    ipopt_log_file = "$output_folder/ipopt_log"
-   ipopt_max_iter = 20000
+   ipopt_max_iter = 10000
    if ipopt_log_to_file
       0 < ipopt_file_log_level < 3 && @warn("`file_print_level` should be 0 or ≥ 3 for IPOPT to report elapsed time, final residuals and number of iterations")
    end
-
    # Callback
    # callback === nothing || setIntermediateCallback(model, callback)
    nlp_optimizer = optimizer_with_attributes(
@@ -191,8 +190,20 @@ function multifrequency_opf(
       "print_level" =>  ipopt_print_level,
       "output_file"=> ipopt_log_file,
       "file_print_level" => ipopt_file_log_level,
-      "max_iter" => ipopt_max_iter
+      "max_iter" => ipopt_max_iter,
+      # "derivative_test" => "first-order",
+      # "print_info_string" => "yes"
    )
+   # nlp_optimizer = optimizer_with_attributes(
+   #    () -> AmplNLWriter.Optimizer(Ipopt_jll.amplexe),
+   #    "print_level" =>  ipopt_print_level,
+   #    "output_file"=> ipopt_log_file,
+   #    "file_print_level" => ipopt_file_log_level,
+   #    "max_iter" => ipopt_max_iter,
+   #    # "halt_on_ampl_error" => "yes",
+   #    # "derivative_test" => "first-order",
+   #    # "print_info_string" => "yes"
+   # )
    PowerModels.logger_config!("error")
    # nlp_optimizer = with_optimizer(Ipopt.Optimizer)
    # note: print_level changes the amount of solver information printed to the terminal
@@ -230,7 +241,6 @@ function multifrequency_opf(
    ref = Dict{Int64,Any}()
    for (subnet_idx,subnet) in mn_data["sn"]
       subnet_idx_int = parse(Int64,subnet_idx)
-
       ref_temp = PowerModels.build_ref(subnet)
       if :it in keys(ref_temp)
          ref[subnet_idx_int] = ref_temp[:it][:pm][:nw][0]
@@ -247,7 +257,7 @@ function multifrequency_opf(
 
    # Export ref to file for debugging
    if output_to_files
-      println("Set ref data. Saving JSON.")
+      # println("Set ref data. Saving JSON.")
       stringref = JSON.json(ref)
       open("$output_folder/ref_data.json", "w") do f
          write(f, stringref)
@@ -383,13 +393,13 @@ function multifrequency_opf(
       )
       for (subnet, bus) in conv_params["converter_buses"]
          if !(subnet in conv_dc_subnets)
-            if (ref[subnet][:bus][bus]["converter_c1"][conv_idx] == 0) &&
-                  (ref[subnet][:bus][bus]["converter_sw1"][conv_idx] == 0)
-               @constraint(
-                  model,
-                  i_rms_sq[conv_idx][(subnet, bus)] == 0
-               )
-            else
+            # if (ref[subnet][:bus][bus]["converter_c1"][conv_idx] == 0) &&
+            #       (ref[subnet][:bus][bus]["converter_sw1"][conv_idx] == 0)
+            #    @constraint(
+            #       model,
+            #       i_rms_sq[conv_idx][(subnet, bus)] == 0
+            #    )
+            # else
                M = ref[subnet][:bus][bus]["converter_M"][conv_idx]
                p_im = p_i[conv_idx][(subnet, bus)]
                q_im = q_i[conv_idx][(subnet, bus)]
@@ -401,7 +411,7 @@ function multifrequency_opf(
                      + (p_im^2 + q_im^2) / (36*v_i^2)
                      )
                )
-            end
+            # end
          end
       end
 
@@ -419,38 +429,6 @@ function multifrequency_opf(
                 for (subnet, bus) in conv_params["converter_buses"] if !(subnet in conv_dc_subnets)) == 0
          )
       else
-      # Interface power balance, including converter loss parameterized by Λ, B, Γ, as a nonlinear constraint if any Λ, B, Γ are nonzero
-         # s_i[conv_idx] = @variable(
-         #    model,
-         #    [(subnet, bus) in conv_params["converter_buses"]],
-         #    base_name = "s_i_$(conv_idx)",
-         #    lower_bound = 0,
-         # )
-         # for (subnet, bus) in conv_params["converter_buses"]
-         #    if !(subnet in conv_dc_subnets)
-         #       if (ref[subnet][:bus][bus]["converter_c2"][conv_idx] != 0) ||
-         #             (ref[subnet][:bus][bus]["converter_sw2"][conv_idx] != 0)
-         #          @constraint(
-         #             model,
-         #             p_i[conv_idx][(subnet, bus)]^2 + q_i[conv_idx][(subnet, bus)]^2 == s_i[conv_idx][(subnet, bus)]^2
-         #          )
-         #       end
-         #    end
-         # end
-         # @NLconstraint(
-         #    model,
-         #    sum(p_i[conv_idx][(subnet, bus)]
-         #        for (subnet, bus) in conv_params["converter_buses"])
-         #    + sum(ref[subnet][:bus][bus]["converter_lambda"][conv_idx]*s_i[conv_idx][(subnet, bus)]
-         #          for (subnet, bus) in conv_params["converter_buses"] if !(subnet in conv_dc_subnets))
-         #    + sum(ref[subnet][:bus][bus]["converter_beta"][conv_idx]*s_i[conv_idx][(subnet, bus)]/vm[subnet][bus]
-         #          for (subnet, bus) in conv_params["converter_buses"] if !(subnet in conv_dc_subnets))
-         #    + sum(ref[subnet][:bus][bus]["converter_gamma"][conv_idx]*s_i[conv_idx][(subnet, bus)]^2/vm[subnet][bus]^2
-         #          for (subnet, bus) in conv_params["converter_buses"] if !(subnet in conv_dc_subnets))
-         #    == 0
-         # )
-
-
          i_mabs[conv_idx] = @variable(
             model,
             [(subnet, bus) in conv_params["converter_buses"]],
@@ -487,38 +465,6 @@ function multifrequency_opf(
                   q_im = q_i[conv_idx][(subnet, bus)]
                   v_i = vm[subnet][bus]
                   if M == 1
-                     # @NLconstraint(
-                     #    model,
-                     #    i_mabs[conv_idx][(subnet, bus)] ==
-                     #    sqrt(2)/(3*pi*v_i)*(
-                     #       p_im^2/s_i[conv_idx][(subnet, bus)]
-                     #       - sqrt(q_im^2)
-                     #       )
-                     # )
-                     # @NLconstraint(
-                     #    model,
-                     #    i_mabs[conv_idx][(subnet, bus)] ==
-                     #    sqrt(2)/(3*pi*v_i)*(
-                     #       p_im - q_im
-                     #       )
-                     # )
-                     # s_M[conv_idx][(subnet, bus)] = @variable(
-                     #       model,
-                     #       base_name = "s_M_$(conv_idx)_$(subnet)_$(bus)",
-                     #       lower_bound = 0,
-                     #       upper_bound = ref[subnet][:bus][bus]["converter_vmax"][conv_idx]*ref[subnet][:bus][bus]["converter_imax"][conv_idx],
-                     #    )
-                     # @constraint(
-                     #    model,
-                     #    p_i[conv_idx][(subnet, bus)]^2*(1-ref[subnet][:bus][bus]["converter_M"][conv_idx]^2) + q_i[conv_idx][(subnet, bus)]^2 == s_M[conv_idx][(subnet, bus)]^2
-                     # )
-                     # @NLconstraint(
-                     #    model,
-                     #    i_mabs[conv_idx][(subnet, bus)] ==
-                     #    2/(3*v_i*sqrt(2))*(
-                     #       p_im^2/s_i[conv_idx][(subnet, bus)] + s_M[conv_idx][(subnet, bus)]
-                     #       )
-                     # )
                      @NLconstraint(
                         model,
                         i_mabs[conv_idx][(subnet, bus)] ==
@@ -537,27 +483,11 @@ function multifrequency_opf(
                         model,
                         p_i[conv_idx][(subnet, bus)]^2*(1-ref[subnet][:bus][bus]["converter_M"][conv_idx]^2) + q_i[conv_idx][(subnet, bus)]^2 == s_M[conv_idx][(subnet, bus)]^2
                      )
-                     # @NLconstraint(
-                     #    model,
-                     #    i_mabs[conv_idx][(subnet, bus)] ==
-                     #    sqrt(2)/(3*pi*v_i)*(
-                     #       M^2*p_im^2/s_i[conv_idx][(subnet, bus)]
-                     #       - s_M[conv_idx][(subnet, bus)]
-                     #       )
-                     # )
-                     # @NLconstraint(
-                     #    model,
-                     #    i_mabs[conv_idx][(subnet, bus)] ==
-                     #    2/(3*v_i*sqrt(2))*(
-                     #       M^2*p_im^2/s_i[conv_idx][(subnet, bus)] + s_M[conv_idx][(subnet, bus)]
-                     #       )
-                     # )
-
                      @NLconstraint(
                         model,
-                        i_mabs[conv_idx][(subnet, bus)] ==
+                        s_i[conv_idx][(subnet, bus)]*i_mabs[conv_idx][(subnet, bus)] ==
                         2/(3*v_i*sqrt(2))*(
-                           M*p_im*(M*p_im/s_i[conv_idx][(subnet, bus)]) + s_M[conv_idx][(subnet, bus)]
+                           M*p_im*(M*p_im) + s_i[conv_idx][(subnet, bus)]*s_M[conv_idx][(subnet, bus)]
                            )
                      )
                   end
@@ -738,8 +668,32 @@ function multifrequency_opf(
    # 2. Solve the Optimal Power Flow Model #
    #########################################
    # Solve the optimization problem
-   open("$output_folder/model.lp", "w") do f
-      print(f, model)
+   # io = open("$output_folder/model.nl","w")
+   # mywrite_nl_file(io,model)
+   # close(io)
+   # open("$output_folder/model.lp", "w") do f
+   #    print(f, model)
+   # end
+
+   open("$output_folder/variables.txt", "w") do f
+      all_indices = MOI.get(model, MOI.ListOfVariableIndices())::Vector{MOI.VariableIndex}
+      for idx in all_indices
+         v = VariableRef(model, idx)
+         print(f, "$idx: $v\n")
+      end
+   end
+
+   println()
+
+   open("$output_folder/constraints.txt", "w") do f
+      for (f_type,set_type) in JuMP.list_of_constraint_types(model)
+         f_type = moi_function_type(f_type)
+         # set_type = MathOptInterface.LessThan{Float64}
+         for idx in MathOptInterface.get(model, MathOptInterface.ListOfConstraintIndices{f_type,set_type}())
+            cnstr = JuMP.constraint_ref_with_index(model, idx)
+            print(f, "$idx: $cnstr\n")
+         end
+      end
    end
 
    optimize!(model)
@@ -773,24 +727,36 @@ function multifrequency_opf(
    # Save the resulting setpoints in PowerModels format
    solution_pm = deepcopy(mn_data)
    for (subnet_idx, ref_subnet) in ref
+      dc_subnet = ((!ref_subnet[:variable_f]) && (ref_subnet[:f_base] == 0))
+      if (:f_max in keys(ref_subnet))
+         # Also DC if max frequency is 0
+         dc_subnet = dc_subnet || (ref_subnet[:f_max] == 0)
+      end
+
       for (i,gen) in ref_subnet[:gen]
          solution_pm["sn"]["$subnet_idx"]["gen"]["$i"]["pg"] = value(pg[subnet_idx][gen["index"]])
-         solution_pm["sn"]["$subnet_idx"]["gen"]["$i"]["qg"] = value(qg[subnet_idx][gen["index"]])
+         if !dc_subnet
+            solution_pm["sn"]["$subnet_idx"]["gen"]["$i"]["qg"] = value(qg[subnet_idx][gen["index"]])
+         end
       end
       for (i,bus) in ref_subnet[:bus]
          solution_pm["sn"]["$subnet_idx"]["bus"]["$i"]["vm"] = value(vm[subnet_idx][bus["bus_i"]])
-         solution_pm["sn"]["$subnet_idx"]["bus"]["$i"]["va"] = value(va[subnet_idx][bus["bus_i"]])
+         if !dc_subnet
+            solution_pm["sn"]["$subnet_idx"]["bus"]["$i"]["va"] = value(va[subnet_idx][bus["bus_i"]])
+         end
       end
       for (i,branch) in ref_subnet[:branch]
          f_idx = (i, branch["f_bus"], branch["t_bus"])
          t_idx = (i, branch["t_bus"], branch["f_bus"])
          solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["pf"] = value(p[subnet_idx][f_idx])
          solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["pt"] = value(p[subnet_idx][t_idx])
-         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qf"] = value(q[subnet_idx][f_idx])
-         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qt"] = value(q[subnet_idx][t_idx])
-         va_fr = va[subnet_idx][branch["f_bus"]]
-         va_to = va[subnet_idx][branch["t_bus"]]
-         solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["angle"] = value(va_fr) - value(va_to)
+         if !dc_subnet
+            solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qf"] = value(q[subnet_idx][f_idx])
+            solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["qt"] = value(q[subnet_idx][t_idx])
+            va_fr = va[subnet_idx][branch["f_bus"]]
+            va_to = va[subnet_idx][branch["t_bus"]]
+            solution_pm["sn"]["$subnet_idx"]["branch"]["$i"]["angle"] = value(va_fr) - value(va_to)
+         end
       end
       for (i,dcline) in ref_subnet[:dcline]
          f_idx = (i, dcline["f_bus"], dcline["t_bus"])
@@ -803,7 +769,7 @@ function multifrequency_opf(
    end
    # Export network to file for debugging
    if output_to_files
-      println("Wrote solution to PowerModels network. Saving JSON.")
+      # println("Wrote solution to PowerModels network. Saving JSON.")
       stringnet = JSON.json(solution_pm)
       open("$output_folder/network_solved.json", "w") do f
          write(f, stringnet)
@@ -859,6 +825,12 @@ function multifrequency_opf(
 
    summary_idx = 1
    for (subnet_idx, ref_subnet) in ref
+      dc_subnet = ((!ref_subnet[:variable_f]) && (ref_subnet[:f_base] == 0))
+      if (:f_max in keys(ref_subnet))
+         # Also DC if max frequency is 0
+         dc_subnet = dc_subnet || (ref_subnet[:f_max] == 0)
+      end
+
       print("\nsubnetwork $(subnet_idx)\n================\n")
       if :f_fixed in keys(ref_subnet)
          freq_res = ref_subnet[:f_fixed]
@@ -907,7 +879,7 @@ function multifrequency_opf(
          bus_arr[bus_idx] = bus["index"]
          # println("bus[\"index\"]: $(bus["index"])")
          vm_arr[bus_idx] = value(vm[subnet_idx][i])
-         va_arr[bus_idx] = value(va[subnet_idx][i]) * 180/pi
+         va_arr[bus_idx] = dc_subnet ? NaN : value(va[subnet_idx][i]) * 180/pi
          vmin_arr[bus_idx] = bus["vmin"]
          vmax_arr[bus_idx] = bus["vmax"]
          # bus_string *= "$i,\t$(vm_tmp),\t$(va_tmp)\n"
@@ -919,7 +891,7 @@ function multifrequency_opf(
             # println("bus[\"index\"]: $(bus["index"])")
             gen_bus_arr[gen_i] = bus["index"]
             p_arr[gen_i] = value(pg[subnet_idx][gen_idx])
-            q_arr[gen_i] = value(qg[subnet_idx][gen_idx])
+            q_arr[gen_i] = dc_subnet ? NaN : value(qg[subnet_idx][gen_idx])
             pmin_arr[gen_i] = ref_subnet[:gen][gen_idx]["pmin"]
             pmax_arr[gen_i] = ref_subnet[:gen][gen_idx]["pmax"]
             qmin_arr[gen_i] = ref_subnet[:gen][gen_idx]["qmin"]
@@ -986,14 +958,14 @@ function multifrequency_opf(
          f_idx = (idx, branch["f_bus"], branch["t_bus"])
          t_idx = (idx, branch["t_bus"], branch["f_bus"])
          p_from_arr[i] = value(p[subnet_idx][f_idx])
-         q_from_arr[i] = value(q[subnet_idx][f_idx])
+         q_from_arr[i] = dc_subnet ? 0 : value(q[subnet_idx][f_idx])
          p_to_arr[i] = value(p[subnet_idx][t_idx])
-         q_to_arr[i] = value(q[subnet_idx][t_idx])
+         q_to_arr[i] = dc_subnet ? 0 : value(q[subnet_idx][t_idx])
          s_from_arr[i] = sqrt(p_from_arr[i]^2 + q_from_arr[i]^2)
          s_to_arr[i] = sqrt(p_to_arr[i]^2 + q_to_arr[i]^2)
          p_loss_arr[i] = abs(p_from_arr[i] + p_to_arr[i])
          q_loss_arr[i] = q_from_arr[i] + q_to_arr[i]
-         angle_diff_arr[i] = (value(va[subnet_idx][branch["f_bus"]]) - value(va[subnet_idx][branch["t_bus"]])) * 180/pi
+         angle_diff_arr[i] = dc_subnet ? NaN : (value(va[subnet_idx][branch["f_bus"]]) - value(va[subnet_idx][branch["t_bus"]])) * 180/pi
          angle_min_arr[i] = branch["angmin"] * 180/pi
          angle_max_arr[i] = branch["angmax"] * 180/pi
       end
@@ -1229,7 +1201,16 @@ function multifrequency_opf(
    elseif length(gen_areas) > 0
       n_areas = length(gen_areas)
       # areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
-      areagen = [sum(value(pg[subnet_idx][i]) for i in keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))) for (subnet_idx, ref_subnet) in ref]
+      # areagen = []
+      # for (subnet_idx, ref_subnet) in ref
+      #    println("subnet: $subnet_idx")
+      #    areagens = keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))
+      #    println("areagens: $areagens")
+      #    println("sum: $(Float64[value(pg[subnet_idx][i]) for i in areagens])")
+      #    println("sum: $(sum(Float64[value(pg[subnet_idx][i]) for i in areagens]))")
+      #    append!(areagen,sum(Float64[value(pg[subnet_idx][i]) for i in areagens]))
+      # end
+      areagen = [sum(Float64[value(pg[subnet_idx][i]) for i in keys(filter(p->(ref_subnet[:bus][last(p)["gen_bus"]]["area"] in gen_areas), ref_subnet[:gen]))]) for (subnet_idx, ref_subnet) in ref]
       if n_areas > 1
          gen_areas_sorted = sort(gen_areas)
          gen_label = "generation in areas"
@@ -1270,6 +1251,11 @@ function multifrequency_opf(
       boundary_capacity = zeros(Float64,length(ref))
       boundary_loss = Array{Float64}(undef, length(ref))
       for (i,(subnet_idx, ref_subnet)) in enumerate(ref)
+         dc_subnet = ((!ref_subnet[:variable_f]) && (ref_subnet[:f_base] == 0))
+         if (:f_max in keys(ref_subnet))
+            # Also DC if max frequency is 0
+            dc_subnet = dc_subnet || (ref_subnet[:f_max] == 0)
+         end
          boundary_arcs = Array{Tuple{Int64,Int64,Int64},1}()
          boundary_arcs_reverse = Array{Tuple{Int64,Int64,Int64},1}()
          f_area_buses = filter(p->(last(p)["area"]==area_interface[1]),ref_subnet[:bus])
@@ -1282,9 +1268,9 @@ function multifrequency_opf(
                   push!(boundary_arcs, arc)
                   push!(boundary_arcs_reverse, (arc[1],arc[3],arc[2]))
                   boundary_p[i] += value(p[subnet_idx][arc])
-                  boundary_q[i] += value(q[subnet_idx][arc])
+                  boundary_q[i] += dc_subnet ? 0 : value(q[subnet_idx][arc])
                   boundary_p_rev[i] += value(p[subnet_idx][(arc[1],arc[3],arc[2])])
-                  boundary_q_rev[i] += value(q[subnet_idx][(arc[1],arc[3],arc[2])])
+                  boundary_q_rev[i] += dc_subnet ? 0 : value(q[subnet_idx][(arc[1],arc[3],arc[2])])
                   boundary_capacity[i] += ref[subnet_idx][:branch][arc[1]]["rate_a"] * ref[subnet_idx][:branch][arc[1]]["br_status"]
                end
             end
@@ -1336,9 +1322,9 @@ function multifrequency_opf(
                   push!(boundary_arcs, arc)
                   push!(boundary_arcs_reverse, (arc[1],arc[3],arc[2]))
                   boundary_p[i] += value(p[subnet_idx][arc])
-                  boundary_q[i] += value(q[subnet_idx][arc])
+                  boundary_q[i] += dc_subnet ? 0 : value(q[subnet_idx][arc])
                   boundary_p_rev[i] += value(p[subnet_idx][(arc[1],arc[3],arc[2])])
-                  boundary_q_rev[i] += value(q[subnet_idx][(arc[1],arc[3],arc[2])])
+                  boundary_q_rev[i] += dc_subnet ? 0 : value(q[subnet_idx][(arc[1],arc[3],arc[2])])
                   br_rate_a = Inf
                   if "rate_a" in keys(ref[subnet_idx][:branch][arc[1]])
                      br_rate_a = ref[subnet_idx][:branch][arc[1]]["rate_a"]
@@ -1425,3 +1411,31 @@ function multifrequency_opf(
 
    return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
 end
+
+# function mywrite_nl_file(f::IO, m::JuMP.Model)
+#     # JuMP.build(mj)
+#     #
+#     # m = internalmodel(mj)
+#     # m.status = :NotSolved
+#     # m.solve_exitcode = -1
+#     # m.solve_result_num = -1
+#     # m.solve_result = "?"
+#     # m.solve_message = ""
+#
+#     # There is no non-linear binary type, only non-linear discrete, so make
+#     # sure binary vars have bounds in [0, 1]
+#     # for i in 1:m.nvar
+#     #     if m.vartypes[i] == :Bin
+#     #         if m.x_l[i] < 0
+#     #             m.x_l[i] = 0
+#     #         end
+#     #         if m.x_u[i] > 1
+#     #             m.x_u[i] = 1
+#     #         end
+#     #     end
+#     # end
+#     AmplNLWriter.make_var_index!(m)
+#     AmplNLWriter.make_con_index!(m)
+#
+#     AmplNLWriter.write_nl_file(f, m.inner)
+# end

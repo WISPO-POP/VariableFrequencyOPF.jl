@@ -1,4 +1,4 @@
-GR.inline("pdf")
+# GR.inline("pdf")
 function plot_results_dict_bar(
       results_dict,
       n_subnets,
@@ -13,7 +13,7 @@ function plot_results_dict_bar(
    default(titlefont=fntlg, guidefont=fntlg, tickfont=fntsm, legendfont=fntsm)
    default(size=(800*upscale,600*upscale)) #Plot canvas size
 
-   gr()
+   # gr()
 
    # plot all results
    # println("results_dict: $results_dict")
@@ -310,7 +310,7 @@ function plot_results_dicts_bar(
    default(titlefont=fntlg, guidefont=fntlg, tickfont=fntsm, legendfont=fntsm)
    default(size=(800*upscale,600*upscale)) #Plot canvas size
 
-   gr()
+   # gr()
 
    if isa(results_dict_allplots, Dict)
       results_dict_allplots = [results_dict_allplots]

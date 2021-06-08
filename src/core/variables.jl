@@ -25,13 +25,15 @@ function add_vars!(
    end
    # Add voltage angles va for each bus
    # print("subnet $(subnet_idx). Adding variables\n")
-   va[subnet_idx] = @variable(
-      model,
-      [i in keys(ref_subnet[:bus])],
-      base_name="va_$(subnet_idx)",
-      start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"]
-      # start = 0.0
-   )
+   if !dc_subnet
+      va[subnet_idx] = @variable(
+         model,
+         [i in keys(ref_subnet[:bus])],
+         base_name="va_$(subnet_idx)",
+         start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"]
+         # start = 0.0
+      )
+   end
    # println([mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"] for i in keys(ref_subnet[:bus])])
    # note: [i in keys(ref[:bus])] adds one `va` variable for each bus in the subnetwork
    # Add voltage magnitudes vm for each bus
@@ -68,14 +70,16 @@ function add_vars!(
    )
    # Add reactive power generation variable qg for each generator (including limits)
 
-   qg[subnet_idx] =  @variable(
-      model,
-      [i in keys(ref_subnet[:gen])],
-      base_name="qg_$(subnet_idx)",
-      lower_bound=ref_subnet[:gen][i]["qmin"],
-      upper_bound=ref_subnet[:gen][i]["qmax"],
-      start = mn_data["sn"]["$(subnet_idx)"]["gen"]["$i"]["qg"]
-   )
+   if !dc_subnet
+      qg[subnet_idx] =  @variable(
+         model,
+         [i in keys(ref_subnet[:gen])],
+         base_name="qg_$(subnet_idx)",
+         lower_bound=ref_subnet[:gen][i]["qmin"],
+         upper_bound=ref_subnet[:gen][i]["qmax"],
+         start = mn_data["sn"]["$(subnet_idx)"]["gen"]["$i"]["qg"]
+      )
+   end
 
    for gen_i in keys(ref_subnet[:gen])
       if !(subnet_idx in keys(constraints[:pg_llim]))
@@ -84,25 +88,28 @@ function add_vars!(
       if !(subnet_idx in keys(constraints[:pg_ulim]))
          constraints[:pg_ulim][subnet_idx] = Dict{Int64,Any}()
       end
-      if !(subnet_idx in keys(constraints[:qg_llim]))
-         constraints[:qg_llim][subnet_idx] = Dict{Int64,Any}()
-      end
-      if !(subnet_idx in keys(constraints[:qg_ulim]))
-         constraints[:qg_ulim][subnet_idx] = Dict{Int64,Any}()
-      end
       constraints[:pg_llim][subnet_idx][gen_i] = LowerBoundRef(pg[subnet_idx][gen_i])
       constraints[:pg_ulim][subnet_idx][gen_i] = UpperBoundRef(pg[subnet_idx][gen_i])
-      constraints[:qg_llim][subnet_idx][gen_i] = LowerBoundRef(qg[subnet_idx][gen_i])
-      constraints[:qg_ulim][subnet_idx][gen_i] = UpperBoundRef(qg[subnet_idx][gen_i])
-   end
 
-   if dc_subnet
-      delete_lower_bound.(qg[subnet_idx])
-      delete_upper_bound.(qg[subnet_idx])
-      for i in keys(ref_subnet[:gen])
-         @constraint(model, qg[subnet_idx][i] == 0)
+      if !dc_subnet
+         if !(subnet_idx in keys(constraints[:qg_llim]))
+            constraints[:qg_llim][subnet_idx] = Dict{Int64,Any}()
+         end
+         if !(subnet_idx in keys(constraints[:qg_ulim]))
+            constraints[:qg_ulim][subnet_idx] = Dict{Int64,Any}()
+         end
+         constraints[:qg_llim][subnet_idx][gen_i] = LowerBoundRef(qg[subnet_idx][gen_i])
+         constraints[:qg_ulim][subnet_idx][gen_i] = UpperBoundRef(qg[subnet_idx][gen_i])
       end
    end
+
+   # if dc_subnet
+   #    delete_lower_bound.(qg[subnet_idx])
+   #    delete_upper_bound.(qg[subnet_idx])
+   #    for i in keys(ref_subnet[:gen])
+   #       @constraint(model, qg[subnet_idx][i] == 0)
+   #    end
+   # end
 
    # Add power flow variables p to represent the active power flow for each branch
    # Apply thermal limits here to bound the variables. Give very generous thermal limits (5x the angle limit at the base frequency) if no thermal limits are defined
@@ -115,13 +122,15 @@ function add_vars!(
       # lower_bound = -abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"])))
    )
    # Add power flow variables q to represent the reactive power flow for each branch
-   q[subnet_idx] = @variable(
-      model,
-      [(l, i, j) in ref_subnet[:arcs]],
-      base_name = "q_$(subnet_idx)",
-      # upper_bound = abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"]))),
-      # lower_bound = -abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"])))
-   )
+   if !dc_subnet
+      q[subnet_idx] = @variable(
+         model,
+         [(l, i, j) in ref_subnet[:arcs]],
+         base_name = "q_$(subnet_idx)",
+         # upper_bound = abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"]))),
+         # lower_bound = -abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"])))
+      )
+   end
    # note: ref_subnet[:arcs] includes both the from (i,j) and the to (j,i) sides of a branch
 
    # Add power flow variables p_dc to represent the active power flow for each HVDC line
@@ -131,11 +140,13 @@ function add_vars!(
       base_name = "p_dc_$(subnet_idx)",
    )
    # Add power flow variables q_dc to represent the reactive power flow at each HVDC terminal
-   q_dc[subnet_idx] = @variable(
-      model,
-      [a in ref_subnet[:arcs_dc]],
-      base_name = "q_dc_$(subnet_idx)",
-   )
+   if !dc_subnet
+      q_dc[subnet_idx] = @variable(
+         model,
+         [a in ref_subnet[:arcs_dc]],
+         base_name = "q_dc_$(subnet_idx)",
+      )
+   end
 
    for (l,dcline) in ref_subnet[:dcline]
       f_idx = (l, dcline["f_bus"], dcline["t_bus"])

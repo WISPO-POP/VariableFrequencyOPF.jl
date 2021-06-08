@@ -12,7 +12,8 @@ function mt_net_comparison(
       print_results::Bool=false,
       results_folders::Array=[],
       scopf::Bool=false,
-      no_converter_loss::Bool=false
+      no_converter_loss::Bool=false,
+      output_to_files::Bool=true
    )
 
    # Run the opf for the base case then all dc configurations
@@ -34,7 +35,8 @@ function mt_net_comparison(
          plot_best_x,
          print_results,
          suffix="",
-         no_converter_loss=no_converter_loss
+         no_converter_loss=no_converter_loss,
+         output_to_files=output_to_files
       )
       push!(results_dict_allplots, results_dict)
 
@@ -57,10 +59,15 @@ function mt_net_comparison(
          push!(results_dict_allplots, results_dict_parsed)
       end
    end
-   results_dict_string = JSON.json(results_dict_allplots)
-   println("Saving results at results_dict_allplots.json")
-   open("results_dict_allplots.json", "w") do f
-      write(f, results_dict_string)
+   if output_to_files
+      println("Saving results at $(output_folder)/results_dict_allplots.json")
+      results_dict_string = JSON.json(results_dict_allplots)
+      if !isdir(output_folder)
+         mkpath(output_folder)
+      end
+      open("$(output_folder)/results_dict_allplots.json", "w") do f
+         write(f, results_dict_string)
+      end
    end
    plot_results_dicts_bar(results_dict_allplots,n_subnets,subnet_array,idx_sorted,output_folder,plot_best_x,series_labels)
 
@@ -140,7 +147,8 @@ function run_series(
       direct_pq::Bool=true,
       master_subnet::Int64=1,
       no_converter_loss::Bool=false,
-      output_to_files::Bool=false
+      output_to_files::Bool=false,
+      start_vals=Dict{String, Dict}("sn"=>Dict())
    )
    folders = [f for f in readdir(parent_folder) if (isdir("$parent_folder/$f"))]
 
@@ -200,7 +208,8 @@ function run_series(
          suffix, print_results,
          override_param=override_param_tmp,
          no_converter_loss=no_converter_loss,
-         output_to_files=output_to_files
+         output_to_files=output_to_files,
+         start_vals=start_vals
       )
 
       # println("STATUS: $(res_summary_temp.status[1])")
@@ -217,7 +226,8 @@ function run_series(
             suffix, print_results,
             override_param=override_param_tmp,
             no_converter_loss=no_converter_loss,
-            output_to_files=output_to_files
+            output_to_files=output_to_files,
+            start_vals=start_vals
          )
          if (res_summary_init.status[1] in [LOCALLY_SOLVED, ALMOST_LOCALLY_SOLVED])
             println("Using no-loss solution as initialization, running OPF again with converter losses.")

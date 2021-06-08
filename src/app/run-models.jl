@@ -55,7 +55,7 @@ function run_opf(
       master_subnet,
       suffix,
       print_results;
-      override_param=Dict(),
+      override_param::Dict=Dict(),
       start_vals=Dict("sn"=>Dict()),
       no_converter_loss::Bool=false,
       output_to_files=output_to_files

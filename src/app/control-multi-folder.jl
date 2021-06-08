@@ -11,8 +11,9 @@ function control_comparison(
       plot_best_x::Int64=-1,
       print_results::Bool=false,
       results_folders::Array=[],
-      scopf::Bool=false,
-      output_to_files::Bool=true
+      output_to_files::Bool=true,
+      override_param::Dict=Dict(),
+      start_vals=Dict{String, Dict}("sn"=>Dict())
    )
 
    # Run the opf for the base case then all dc configurations
@@ -34,7 +35,9 @@ function control_comparison(
          plot_best_x=plot_best_x,
          print_results=print_results,
          suffix="",
-         output_to_files=output_to_files
+         output_to_files=output_to_files,
+         start_vals=start_vals,
+         override_param=override_param
       )
       push!(results_dict_allplots, results_dict)
 

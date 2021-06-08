@@ -16,7 +16,8 @@ function hvdc_comparison(
       series_labels::Array=[],
       results_folders::Array=[],
       scopf::Bool=false,
-      no_converter_loss::Bool=false
+      no_converter_loss::Bool=false,
+      output_to_files::Bool=true
    )
    if (length(k_cond)) > 0 && (length(k_ins) > 0)
       if scopf
@@ -53,7 +54,8 @@ function hvdc_comparison(
          plot_best_x,
          print_results,
          suffix=series_labels[1],
-         no_converter_loss=no_converter_loss
+         no_converter_loss=no_converter_loss,
+         output_to_files=output_to_files
       )
       push!(results_dict_allplots, results_dict)
 
@@ -82,7 +84,8 @@ function hvdc_comparison(
             print_results,
             override_param=override_param,
             suffix=series_labels[1+param_i],
-            no_converter_loss=no_converter_loss
+            no_converter_loss=no_converter_loss,
+            output_to_files=output_to_files
          )
          push!(results_dict_allplots, results_dict)
 
@@ -107,10 +110,15 @@ function hvdc_comparison(
          push!(results_dict_allplots, results_dict_parsed)
       end
    end
-   results_dict_string = JSON.json(results_dict_allplots)
-   println("Saving results at results_dict_allplots.json")
-   open("results_dict_allplots.json", "w") do f
-      write(f, results_dict_string)
+   if output_to_files
+      println("Saving results at $(output_folder)/results_dict_allplots.json")
+      results_dict_string = JSON.json(results_dict_allplots)
+      if !isdir(output_folder)
+         mkpath(output_folder)
+      end
+      open("$(output_folder)/results_dict_allplots.json", "w") do f
+         write(f, results_dict_string)
+      end
    end
    plot_results_dicts_bar(results_dict_allplots,n_subnets,subnet_array,idx_sorted,output_folder,plot_best_x,series_labels)
 

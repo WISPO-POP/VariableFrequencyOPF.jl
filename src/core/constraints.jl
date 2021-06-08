@@ -29,13 +29,13 @@ function add_constraints!(
    end
    # Fix the voltage angle to zero at the reference bus in each subnetwork
    # If no direct PQ control, fix the angle only for the master subnet
-   if direct_pq || (subnet_idx==master_subnet)
+   if !dc_subnet && (direct_pq || (subnet_idx==master_subnet))
       for (i,bus) in ref_subnet[:ref_buses]
          if !(subnet_idx in keys(constraints[:theta_ref]))
             constraints[:theta_ref][subnet_idx] = Dict{Int64, Any}()
          end
          constraints[:theta_ref][subnet_idx][i] = @constraint(model, va[subnet_idx][i] == 0)
-         println("set angle reference bus $i in subnet $subnet_idx")
+         # println("set angle reference bus $i in subnet $subnet_idx")
       end
    end
 
@@ -142,15 +142,12 @@ function add_constraints!(
       # note: it is necessary to distinguish between the from and to sides of a branch due to power losses
 
       p_fr = p[subnet_idx][f_idx]                     # p_fr is a reference to the optimization variable p[f_idx]
-      q_fr = q[subnet_idx][f_idx]                     # q_fr is a reference to the optimization variable q[f_idx]
       p_to = p[subnet_idx][t_idx]                     # p_to is a reference to the optimization variable p[t_idx]
-      q_to = q[subnet_idx][t_idx]                     # q_to is a reference to the optimization variable q[t_idx]
       # note: adding constraints to p_fr is equivalent to adding constraints to p[f_idx], and so on
 
       vm_fr = vm[subnet_idx][branch["f_bus"]]         # vm_fr is a reference to the optimization variable vm on the from side of the branch
       vm_to = vm[subnet_idx][branch["t_bus"]]         # vm_to is a reference to the optimization variable vm on the to side of the branch
-      va_fr = va[subnet_idx][branch["f_bus"]]         # va_fr is a reference to the optimization variable va on the from side of the branch
-      va_to = va[subnet_idx][branch["t_bus"]]         # va_fr is a reference to the optimization variable va on the to side of the branch
+
 
       # Compute the branch parameters and transformer ratios from the data
       g_base, b_base = PowerModels.calc_branch_y(branch)
@@ -168,7 +165,6 @@ function add_constraints!(
       end
 
       if ref_subnet[:variable_f]
-         # print("defining variable G, B\n")
          f_base = ref_subnet[:f_base]
          # Series parameters
 
@@ -193,7 +189,6 @@ function add_constraints!(
          # print("c_to: $(c_to)\n")
 
          if dc_subnet
-            # print("defining fixed G, B\n")
             g[subnet_idx][i] = 1/r
             b[subnet_idx][i] = 0
             b_fr[subnet_idx][i] = 0
@@ -265,6 +260,12 @@ function add_constraints!(
             b[subnet_idx][i] = b_base
             b_fr[subnet_idx][i] = b_fr_base
             b_to[subnet_idx][i] = b_to_base
+         elseif f_ratio == 0 # DC subnetwork
+            r = branch["br_r"]
+            g[subnet_idx][i] = 1/r
+            b[subnet_idx][i] = 0
+            b_fr[subnet_idx][i] = 0
+            b_to[subnet_idx][i] = 0
          else
             f_base = ref_subnet[:f_base]
             # Series parameters
@@ -334,6 +335,7 @@ function add_constraints!(
 
          println("k_cond: $k_cond")
          println("k_ins: $k_ins")
+         println("g_br: $g_br")
          ## From side of the branch flow
          @NLconstraint(
             model,
@@ -342,10 +344,10 @@ function add_constraints!(
                + (-g_br)*(vm_fr*vm_to)
             )
          )
-         @constraint(
-            model,
-            q_fr == 0
-         )
+         # @constraint(
+         #    model,
+         #    q_fr == 0
+         # )
 
 
          # To side of the branch flow
@@ -356,21 +358,25 @@ function add_constraints!(
                + (-g_br)*(vm_to*vm_fr)
             )
          )
-         @constraint(
-            model,
-            q_to == 0
-         )
+         # @constraint(
+         #    model,
+         #    q_to == 0
+         # )
 
-         @constraint(
-            model,
-            va_fr == 0
-         )
-         @constraint(
-            model,
-            va_to == 0
-         )
+         # @constraint(
+         #    model,
+         #    va_fr == 0
+         # )
+         # @constraint(
+         #    model,
+         #    va_to == 0
+         # )
 
       else
+         q_fr = q[subnet_idx][f_idx]                     # q_fr is a reference to the optimization variable q[f_idx]
+         q_to = q[subnet_idx][t_idx]                     # q_to is a reference to the optimization variable q[t_idx]
+         va_fr = va[subnet_idx][branch["f_bus"]]         # va_fr is a reference to the optimization variable va on the from side of the branch
+         va_to = va[subnet_idx][branch["t_bus"]]         # va_fr is a reference to the optimization variable va on the to side of the branch
          # From side of the branch flow
          @NLconstraint(
             model,
@@ -454,8 +460,11 @@ function add_constraints!(
             constraints[:s_llim][subnet_idx] = Dict{Int64,Any}()
          end
          if dc_subnet && dc_current_limit
-            constraints[:s_ulim][subnet_idx][i] = @constraint(model, p_fr^2 + q_fr^2 <= k_ins*k_cond*branch["rate_a"]^2)
-            constraints[:s_llim][subnet_idx][i] = @constraint(model, p_to^2 + q_to^2 <= k_ins*k_cond*branch["rate_a"]^2)
+            constraints[:s_ulim][subnet_idx][i] = @constraint(model, p_fr^2 <= k_ins*k_cond*branch["rate_a"]^2)
+            constraints[:s_llim][subnet_idx][i] = @constraint(model, p_to^2 <= k_ins*k_cond*branch["rate_a"]^2)
+         elseif dc_subnet
+            constraints[:s_ulim][subnet_idx][i] = @constraint(model, p_fr^2 <= branch["rate_a"]^2)
+            constraints[:s_llim][subnet_idx][i] = @constraint(model, p_to^2 <= branch["rate_a"]^2)
          else
             constraints[:s_ulim][subnet_idx][i] = @constraint(model, p_fr^2 + q_fr^2 <= branch["rate_a"]^2)
             constraints[:s_llim][subnet_idx][i] = @constraint(model, p_to^2 + q_to^2 <= branch["rate_a"]^2)

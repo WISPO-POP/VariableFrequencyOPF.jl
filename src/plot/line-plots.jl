@@ -1,4 +1,4 @@
-GR.inline("pdf")
+# GR.inline("pdf")
 # upscale = 2 #upscaling in resolution
 # fntsm = font("serif", pointsize=round(8.0*upscale))
 # fntlg = font("serif", pointsize=round(12.0*upscale))
@@ -24,7 +24,7 @@ function plot_results_dict_line(
       color_palette=:tab10
    )
 
-   GR.inline("pdf")
+   # GR.inline("pdf")
 
    upscale = 2 #upscaling in resolution
    fntsm = font("serif", pointsize=round(8.0*upscale))
@@ -32,7 +32,7 @@ function plot_results_dict_line(
    default(titlefont=fntlg, guidefont=fntlg, tickfont=fntsm, legendfont=fntsm)
    default(size=(800*upscale,600*upscale)) #Plot canvas size
 
-   gr()
+   # gr()
 
    # Given each specific key for the x axis values, collect the values into x_arr and the indices into indices array
    # println("axis: $axis")
@@ -387,7 +387,7 @@ function plot_line(
       pts_y_arr,
       pts_labels
    )
-   GR.inline("pdf")
+   # GR.inline("pdf")
 
    upscale = 2 #upscaling in resolution
    fntsm = font("serif", pointsize=round(8.0*upscale))
@@ -395,7 +395,7 @@ function plot_line(
    default(titlefont=fntlg, guidefont=fntlg, tickfont=fntsm, legendfont=fntsm)
    default(size=(800*upscale,600*upscale)) #Plot canvas size
 
-   gr()
+   # gr()
    plt = Plots.plot()
    plot_line!(plt,x_sorted, y_sorted, x_label, y_label, output_folder, plotdir, vert_line, horiz_line, xlimits, ylimits, xvals, infeasible_boundaries; pts_x_arr=pts_x_arr, pts_y_arr=pts_y_arr, pts_labels=pts_labels)
 
@@ -421,7 +421,7 @@ function plot_line!(
       pts_labels,
       series_label=""
    )
-   GR.inline("pdf")
+   # GR.inline("pdf")
 
    upscale = 2 #upscaling in resolution
    fntsm = font("serif", pointsize=round(8.0*upscale))
@@ -429,7 +429,7 @@ function plot_line!(
    default(titlefont=fntlg, guidefont=fntlg, tickfont=fntsm, legendfont=fntsm)
    default(size=(800*upscale,600*upscale)) #Plot canvas size
 
-   gr()
+   # gr()
    # println("x_sorted: $x_sorted")
    # println("y_sorted: $y_sorted")
    if length(series_label) == 0
@@ -452,9 +452,9 @@ function plot_line!(
    end
 
    if length(xvals) > 0
-      println("xvals: $xvals")
-      println("x_sorted: $x_sorted")
-      println("y_sorted: $y_sorted")
+      # println("xvals: $xvals")
+      # println("x_sorted: $x_sorted")
+      # println("y_sorted: $y_sorted")
       plot!(
          plt, xvals, y_sorted[indexin(xvals, x_sorted)],
          line=:scatter,

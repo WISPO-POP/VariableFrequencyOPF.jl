@@ -59,7 +59,7 @@ function upgrade_branches(
       subnet_params["fmin_lfac"] = 0.1
    end
    if !("fmax_lfac" in keys(subnet_params))
-      subnet_params["fmax_lfac"] = 100.0
+      subnet_params["fmax_lfac"] = fbase
    end
    if "contingency_file" in names(base_subnet_df)
       ctg_filename = base_subnet_df.contingency_file[1]
@@ -70,7 +70,8 @@ function upgrade_branches(
          f_base=[fbase, subnet_params["fbase_lfac"]],
          f_min=[subnet_params["fmin"], subnet_params["fmin_lfac"]],
          f_max=[subnet_params["fmax"], subnet_params["fmax_lfac"]],
-         contingency_file=[ctg_filename, "lfac_$(ctg_filename)"]
+         contingency_file=[ctg_filename, "lfac_$(ctg_filename)"],
+         interfaces_file="interfaces_file" in names(base_subnet_df) ? [base_subnet_df.interfaces_file[1], base_subnet_df.interfaces_file[1]] : ["interfaces.csv","interfaces.csv"]
       )
    else
       subnet_df = DataFrame(
@@ -79,7 +80,8 @@ function upgrade_branches(
          variable_f=[subnet_params["var_f"], subnet_params["var_f_lfac"]],
          f_base=[fbase, subnet_params["fbase_lfac"]],
          f_min=[subnet_params["fmin"], subnet_params["fmin_lfac"]],
-         f_max=[subnet_params["fmax"], subnet_params["fmax_lfac"]]
+         f_max=[subnet_params["fmax"], subnet_params["fmax_lfac"]],
+         interfaces_file="interfaces_file" in names(base_subnet_df) ? [base_subnet_df.interfaces_file[1], base_subnet_df.interfaces_file[1]] : ["interfaces.csv","interfaces.csv"]
       )
    end
 
@@ -436,6 +438,10 @@ function upgrade_branches(
                # println("sourceid: $(other_branch["source_id"])")
                if (length(other_branch["source_id"])>3) && (Unicode.normalize(other_branch["source_id"][1], casefold=true) == "branch") && (Unicode.normalize(other_branch["source_id"][4], casefold=true) == "sc") # is a series compensation branch
                   # println("series compensation branch $(other_branch["index"])")
+                  # println("other_branch: $other_branch")
+                  if "sc_bus" ∉ keys(other_branch)
+                     other_branch["sc_bus"] = other_branch["source_id"][2]
+                  end
                   seriescomp_bus = other_branch["sc_bus"]
                   if (branch["f_bus"] == seriescomp_bus) || (branch["t_bus"] == seriescomp_bus)
                      sc_connected = true
@@ -594,7 +600,8 @@ function upgrade_branches(
          interface_params["bus"] = bus
          push!(iface_df, interface_params)
          # Save interfaces file
-         CSV.write("$output_dir/interfaces.csv", iface_df)
+         interfaces_filename = "interfaces_file" in names(base_subnet_df) ? base_subnet_df.interfaces_file[1] : "interfaces.csv"
+         CSV.write("$output_dir/$interfaces_filename", iface_df)
          # Save subnetworks file
          CSV.write("$output_dir/subnetworks.csv", subnet_df)
 
@@ -660,6 +667,9 @@ function change_angle_lims(base_network, output_location, angle_lim_deg, indices
    end
    cp("$prefix/interfaces.csv", "$output_dir/interfaces.csv", force=true)
    cp("$prefix/subnetworks.csv", "$output_dir/subnetworks.csv", force=true)
+   if isfile("$prefix/contingencies.con")
+      cp("$prefix/contingencies.con", "$output_dir/contingencies.con", force=true)
+   end
 
 
    data = PowerModels.parse_file(base_network)

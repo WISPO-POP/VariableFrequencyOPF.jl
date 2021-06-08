@@ -179,11 +179,10 @@ function frequency_ranges(
          scale_all_areas = true
       end
       # get load pd and qd from areas of interest and put them in dict_filt
-      sn_data = read_sn_data(directory)
       dict_filt = Dict()
-      for (subnet_idx,sn_subnet) in sn_data["sn"]
-         for (load_idx,load) in sn_subnet["load"]
-            if (sn_subnet["bus"]["$(load["load_bus"])"]["area"] in scale_areas) || (scale_all_areas)
+      for (subnet_idx,mn_subnet) in mn_data["sn"]
+         for (load_idx,load) in mn_subnet["load"]
+            if (mn_subnet["bus"]["$(load["load_bus"])"]["area"] in scale_areas) || (scale_all_areas)
                pd_keys = ["sn",subnet_idx,"load",load_idx,"pd"]
                pd = load["pd"]
                set_nested!(dict_filt, pd_keys, pd)
