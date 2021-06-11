@@ -13,7 +13,8 @@ function control_comparison(
       results_folders::Array=[],
       output_to_files::Bool=true,
       override_param::Dict=Dict(),
-      start_vals=Dict{String, Dict}("sn"=>Dict())
+      start_vals=Dict{String, Dict}("sn"=>Dict()),
+      regularize_f::Float64=0.0
    )
 
    # Run the opf for the base case then all dc configurations
@@ -37,7 +38,8 @@ function control_comparison(
          suffix="",
          output_to_files=output_to_files,
          start_vals=start_vals,
-         override_param=override_param
+         override_param=override_param,
+         regularize_f=regularize_f
       )
       push!(results_dict_allplots, results_dict)
 
@@ -67,7 +69,8 @@ function control_comparison(
          fix_f_override=fix_f_override,
          direct_pq=direct_pq,
          master_subnet=master_subnet,
-         output_to_files=output_to_files
+         output_to_files=output_to_files,
+         regularize_f=regularize_f
       )
       push!(results_dict_allplots, results_dict)
 
@@ -97,7 +100,8 @@ function control_comparison(
          fix_f_override=fix_f_override,
          direct_pq=direct_pq,
          master_subnet=master_subnet,
-         output_to_files=output_to_files
+         output_to_files=output_to_files,
+         regularize_f=regularize_f
       )
       push!(results_dict_allplots, results_dict)
       push!(results_folders, series_output_folder)

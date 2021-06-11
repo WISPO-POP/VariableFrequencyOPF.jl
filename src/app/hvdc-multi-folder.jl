@@ -17,7 +17,8 @@ function hvdc_comparison(
       results_folders::Array=[],
       scopf::Bool=false,
       no_converter_loss::Bool=false,
-      output_to_files::Bool=true
+      output_to_files::Bool=true,
+      regularize_f::Float64=0.0
    )
    if (length(k_cond)) > 0 && (length(k_ins) > 0)
       if scopf
@@ -55,7 +56,8 @@ function hvdc_comparison(
          print_results,
          suffix=series_labels[1],
          no_converter_loss=no_converter_loss,
-         output_to_files=output_to_files
+         output_to_files=output_to_files,
+         regularize_f=regularize_f
       )
       push!(results_dict_allplots, results_dict)
 
@@ -85,7 +87,8 @@ function hvdc_comparison(
             override_param=override_param,
             suffix=series_labels[1+param_i],
             no_converter_loss=no_converter_loss,
-            output_to_files=output_to_files
+            output_to_files=output_to_files,
+            regularize_f=regularize_f
          )
          push!(results_dict_allplots, results_dict)
 

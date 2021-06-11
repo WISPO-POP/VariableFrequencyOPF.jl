@@ -59,7 +59,8 @@ function multifrequency_opf(
    unbounded_pg::Bool=false,
    output_to_files::Bool=true,
    output_location_base::String="",
-   output_top_folder::String=""
+   output_top_folder::String="",
+   regularize_f::Float64=0.0
    )
 
    println("read_sn_data($folder)")
@@ -101,7 +102,8 @@ function multifrequency_opf(
       start_vals,
       uniform_gen_scaling,
       unbounded_pg,
-      output_to_files
+      output_to_files,
+      regularize_f
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -120,7 +122,8 @@ function multifrequency_opf(
       direct_pq::Bool=true,
       master_subnet::Int64=1,
       suffix::String="",
-      start_vals=Dict{String, Dict}("sn"=>Dict())
+      start_vals=Dict{String, Dict}("sn"=>Dict()),
+      regularize_f::Float64=0.0
       )
 
       (output_dict, res_summary, solution_pm, binding_cnstr_dict) = multifrequency_opf(
@@ -137,6 +140,7 @@ function multifrequency_opf(
          master_subnet=master_subnet,
          suffix=suffix,
          start_vals=start_vals,
+         regularize_f=regularize_f
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -158,7 +162,8 @@ function multifrequency_opf(
       start_vals=Dict{String, Dict}("sn"=>Dict()),
       uniform_gen_scaling::Bool=false,
       unbounded_pg::Bool=false,
-      output_to_files::Bool=true
+      output_to_files::Bool=true,
+      regularize_f::Float64=0.0
       )
 
    # If direct_pq is false, then interface flow respects Kirchoff
@@ -630,38 +635,101 @@ function multifrequency_opf(
 
    # Add Objective Function
    # ----------------------
+   if regularize_f > 0
+      # f_regularizer_all_sn = Dict{Int64,Any}()
+      # for (subnet_idx, ref_subnet) in ref
+         # if ref_subnet[:variable_f]
+         #    f_regularizer_all_sn[subnet_idx] = @variable(
+         #       model,
+         #       base_name = "f_regularizer",
+         #       lower_bound = 0
+         #    )
+         # @constraint(
+         #    model,
+         #    f_regularizer_all_sn[subnet_idx] == sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
+         # )
+      f_regularizer = @variable(
+         model,
+         base_name = "f_regularizer",
+         lower_bound = 0
+      )
+      @constraint(
+         model,
+         f_regularizer == sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
+      )
+   end
    if obj=="mincost"
       # Minimize the cost of active power generation and cost of HVDC line usage
-      @objective(model, Min,
-         sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-         sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
-      )
+      if regularize_f > 0
+         @objective(model, Min,
+            sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            f_regularizer
+         )
+      else
+         @objective(model, Min,
+            sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         )
+      end
    elseif obj=="minredispatch"
       # Minimize the deviations from the base case dispatch
+      if regularize_f > 0
       @objective(model, Min,
          sum(redispatch_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
          # sum(redispatch_qg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-         1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
          # sum(redispatch_va[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         f_regularizer
       )
+      else
+         @objective(model, Min,
+            sum(redispatch_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            # sum(redispatch_qg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            # sum(redispatch_va[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         )
+      end
    elseif obj=="areagen"
       # Minimize the generation in the specified areas
-      @objective(model, Min,
-         sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
-      )
+      if regularize_f > 0
+         @objective(model, Min,
+            sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            f_regularizer
+         )
+      else
+         @objective(model, Min,
+            sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         )
+      end
    elseif obj=="zonegen"
       # Minimize the generation in the specified zones
-      @objective(model, Min,
-         sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
-      )
+      if regularize_f > 0
+         @objective(model, Min,
+            sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            f_regularizer
+         )
+      else
+         @objective(model, Min,
+            sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         )
+      end
    else
       println("The specified objective has not been implemented. Using minumum cost as the objective.")
       obj = "mincost"
       # Minimize the cost of active power generation and cost of HVDC line usage
-      @objective(model, Min,
-         sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-         sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
-      )
+      if regularize_f > 0
+         @objective(model, Min,
+            sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            f_regularizer
+         )
+      else
+         @objective(model, Min,
+            sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         )
+      end
    end
 
    #########################################
