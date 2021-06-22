@@ -60,7 +60,8 @@ function multifrequency_opf(
    output_to_files::Bool=true,
    output_location_base::String="",
    output_top_folder::String="",
-   regularize_f::Float64=0.0
+   regularize_f::Float64=0.0,
+   ipopt_max_iter::Int64=10000
    )
 
    println("read_sn_data($folder)")
@@ -103,7 +104,8 @@ function multifrequency_opf(
       uniform_gen_scaling,
       unbounded_pg,
       output_to_files,
-      regularize_f
+      regularize_f=regularize_f,
+      ipopt_max_iter=ipopt_max_iter
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -122,8 +124,9 @@ function multifrequency_opf(
       direct_pq::Bool=true,
       master_subnet::Int64=1,
       suffix::String="",
-      start_vals=Dict{String, Dict}("sn"=>Dict()),
-      regularize_f::Float64=0.0
+      start_vals=Dict{String, Dict}("sn"=>Dict());
+      regularize_f::Float64=0.0,
+      ipopt_max_iter::Int64=10000
       )
 
       (output_dict, res_summary, solution_pm, binding_cnstr_dict) = multifrequency_opf(
@@ -140,7 +143,8 @@ function multifrequency_opf(
          master_subnet=master_subnet,
          suffix=suffix,
          start_vals=start_vals,
-         regularize_f=regularize_f
+         regularize_f=regularize_f,
+         ipopt_max_iter=ipopt_max_iter
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -162,8 +166,9 @@ function multifrequency_opf(
       start_vals=Dict{String, Dict}("sn"=>Dict()),
       uniform_gen_scaling::Bool=false,
       unbounded_pg::Bool=false,
-      output_to_files::Bool=true,
-      regularize_f::Float64=0.0
+      output_to_files::Bool=true;
+      regularize_f::Float64=0.0,
+      ipopt_max_iter::Int64=10000
       )
 
    # If direct_pq is false, then interface flow respects Kirchoff
@@ -184,7 +189,6 @@ function multifrequency_opf(
    ipopt_log_to_file = true
    ipopt_file_log_level = 3
    ipopt_log_file = "$output_folder/ipopt_log"
-   ipopt_max_iter = 10000
    if ipopt_log_to_file
       0 < ipopt_file_log_level < 3 && @warn("`file_print_level` should be 0 or ≥ 3 for IPOPT to report elapsed time, final residuals and number of iterations")
    end

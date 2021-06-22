@@ -17,6 +17,7 @@ function run_opf(
       start_vals=Dict("sn"=>Dict()),
       no_converter_loss::Bool=false,
       regularize_f::Float64=0.0,
+      ipopt_max_iter::Int64=10000,
       output_to_files=output_to_files
    )
    (result, res_summary, solution_pm, binding_cnstr) = multifrequency_opf(
@@ -28,7 +29,8 @@ function run_opf(
       master_subnet=1, suffix=suffix, override_param=override_param,
       start_vals=start_vals, no_converter_loss=no_converter_loss,
       output_to_files=output_to_files,
-      regularize_f=regularize_f
+      regularize_f=regularize_f,
+      ipopt_max_iter=ipopt_max_iter
       )
    results_dict_out = deepcopy(results_dict)
    for (label, value) in result
