@@ -639,7 +639,7 @@ function multifrequency_opf(
 
    # Add Objective Function
    # ----------------------
-   if regularize_f > 0
+   if regularize_f > 0.0
       # f_regularizer_all_sn = Dict{Int64,Any}()
       # for (subnet_idx, ref_subnet) in ref
          # if ref_subnet[:variable_f]
@@ -655,7 +655,7 @@ function multifrequency_opf(
       f_regularizer = @variable(
          model,
          base_name = "f_regularizer",
-         lower_bound = 0
+         lower_bound = 0.0
       )
       @constraint(
          model,
@@ -664,7 +664,7 @@ function multifrequency_opf(
    end
    if obj=="mincost"
       # Minimize the cost of active power generation and cost of HVDC line usage
-      if regularize_f > 0
+      if regularize_f > 0.0
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
@@ -696,7 +696,7 @@ function multifrequency_opf(
       end
    elseif obj=="areagen"
       # Minimize the generation in the specified areas
-      if regularize_f > 0
+      if regularize_f > 0.0
          @objective(model, Min,
             sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
@@ -708,7 +708,7 @@ function multifrequency_opf(
       end
    elseif obj=="zonegen"
       # Minimize the generation in the specified zones
-      if regularize_f > 0
+      if regularize_f > 0.0
          @objective(model, Min,
             sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
@@ -722,7 +722,7 @@ function multifrequency_opf(
       println("The specified objective has not been implemented. Using minumum cost as the objective.")
       obj = "mincost"
       # Minimize the cost of active power generation and cost of HVDC line usage
-      if regularize_f > 0
+      if regularize_f > 0.0
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
@@ -743,30 +743,30 @@ function multifrequency_opf(
    # io = open("$output_folder/model.nl","w")
    # mywrite_nl_file(io,model)
    # close(io)
-   # open("$output_folder/model.lp", "w") do f
-   #    print(f, model)
+   open("$output_folder/model.lp", "w") do f
+      print(f, model)
+   end
+
+   # open("$output_folder/variables.txt", "w") do f
+   #    all_indices = MOI.get(model, MOI.ListOfVariableIndices())::Vector{MOI.VariableIndex}
+   #    for idx in all_indices
+   #       v = VariableRef(model, idx)
+   #       print(f, "$idx: $v\n")
+   #    end
    # end
-
-   open("$output_folder/variables.txt", "w") do f
-      all_indices = MOI.get(model, MOI.ListOfVariableIndices())::Vector{MOI.VariableIndex}
-      for idx in all_indices
-         v = VariableRef(model, idx)
-         print(f, "$idx: $v\n")
-      end
-   end
-
-   println()
-
-   open("$output_folder/constraints.txt", "w") do f
-      for (f_type,set_type) in JuMP.list_of_constraint_types(model)
-         f_type = moi_function_type(f_type)
-         # set_type = MathOptInterface.LessThan{Float64}
-         for idx in MathOptInterface.get(model, MathOptInterface.ListOfConstraintIndices{f_type,set_type}())
-            cnstr = JuMP.constraint_ref_with_index(model, idx)
-            print(f, "$idx: $cnstr\n")
-         end
-      end
-   end
+   #
+   # println()
+   #
+   # open("$output_folder/constraints.txt", "w") do f
+   #    for (f_type,set_type) in JuMP.list_of_constraint_types(model)
+   #       f_type = moi_function_type(f_type)
+   #       # set_type = MathOptInterface.LessThan{Float64}
+   #       for idx in MathOptInterface.get(model, MathOptInterface.ListOfConstraintIndices{f_type,set_type}())
+   #          cnstr = JuMP.constraint_ref_with_index(model, idx)
+   #          print(f, "$idx: $cnstr\n")
+   #       end
+   #    end
+   # end
 
    optimize!(model)
 
