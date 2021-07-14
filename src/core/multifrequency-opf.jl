@@ -640,18 +640,6 @@ function multifrequency_opf(
    # Add Objective Function
    # ----------------------
    if regularize_f > 0.0
-      # f_regularizer_all_sn = Dict{Int64,Any}()
-      # for (subnet_idx, ref_subnet) in ref
-         # if ref_subnet[:variable_f]
-         #    f_regularizer_all_sn[subnet_idx] = @variable(
-         #       model,
-         #       base_name = "f_regularizer",
-         #       lower_bound = 0
-         #    )
-         # @constraint(
-         #    model,
-         #    f_regularizer_all_sn[subnet_idx] == sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
-         # )
       f_regularizer = @variable(
          model,
          base_name = "f_regularizer",
@@ -659,7 +647,7 @@ function multifrequency_opf(
       )
       @constraint(
          model,
-         f_regularizer == sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
+         f_regularizer >= sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
       )
    end
    if obj=="mincost"
