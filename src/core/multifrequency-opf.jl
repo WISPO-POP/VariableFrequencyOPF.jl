@@ -647,7 +647,7 @@ function multifrequency_opf(
       )
       @constraint(
          model,
-         f_regularizer >= sum(regularize_f/ref_subnet[:f_base]*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
+         f_regularizer >= sum(regularize_f/ref_subnet[:f_base]^2*(ref_subnet[:f_base]-f[subnet_idx])^2 for (subnet_idx, ref_subnet) in ref if ref_subnet[:variable_f])
       )
    end
    if obj=="mincost"
