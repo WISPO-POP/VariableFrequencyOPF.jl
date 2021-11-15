@@ -121,6 +121,7 @@ function add_vars!(
       # upper_bound = abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"]))),
       # lower_bound = -abs("rate_a" in keys(ref_subnet[:branch][l]) ? ref_subnet[:branch][l]["rate_a"] : (5*(1.1)^2)/ref_subnet[:branch][l]["br_x"]*sin(max(ref_subnet[:branch][l]["angmax"],ref_subnet[:branch][l]["angmin"])))
    )
+   # println("keys(p[subnet_idx]): $(keys(p[subnet_idx]))")
    # Add power flow variables q to represent the reactive power flow for each branch
    if !dc_subnet
       q[subnet_idx] = @variable(

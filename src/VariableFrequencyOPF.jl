@@ -17,6 +17,9 @@ using CategoricalArrays
 using Plots
 using Plots.PlotMeasures
 using StatsPlots
+using SpecialFunctions
+using Printf
+using StatsBase
 # using AmplNLWriter
 import Unicode
 # import GR
@@ -24,6 +27,7 @@ import MathOptInterface
 
 include("plot/bar-plots.jl")
 include("plot/line-plots.jl")
+include("plot/multi_plot_new.jl")
 
 include("core/multifrequency-opf.jl")
 include("core/variables.jl")
@@ -38,12 +42,15 @@ include("app/hvdc-multi-folder.jl")
 include("app/modify-network.jl")
 include("app/run-models.jl")
 include("app/benchmarking.jl")
+include("app/cables.jl")
 
 include("util/collect-results.jl")
 include("util/dict-util.jl")
 include("util/multi-folder.jl")
 include("util/no-loss-override.jl")
 include("util/param-sweep.jl")
+include("util/time_parse.jl")
+include("util/time_series_opf.jl")
 
 
 end

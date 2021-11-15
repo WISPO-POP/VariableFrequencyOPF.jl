@@ -85,6 +85,10 @@ function add_constraints!(
       end
       # print("defined shunts\n")
       # Active power balance at node i
+      # for conv_idx in bus_interfaces
+      #    println("bus $i conv_idx: $conv_idx")
+      #    println("keys(p_i[$(conv_idx[1][1])]) = $(keys(p_i[conv_idx[1][1]]))")
+      # end
       @constraint(
          model,
          sum(p[subnet_idx][a] for a in ref_subnet[:bus_arcs][i]) +                  # sum of active power flow on lines from bus i +
@@ -150,12 +154,7 @@ function add_constraints!(
 
 
       # Compute the branch parameters and transformer ratios from the data
-      g_base, b_base = PowerModels.calc_branch_y(branch)
       tr, ti = PowerModels.calc_branch_t(branch)
-      g_fr[subnet_idx][i] = branch["g_fr"]
-      b_fr_base = branch["b_fr"]
-      g_to[subnet_idx][i] = branch["g_to"]
-      b_to_base = branch["b_to"]
       tm = branch["tap"]^2
       # note: tap is assumed to be 1.0 on non-transformer branches
       # print("g_base: $(g_base)\n")
@@ -165,84 +164,217 @@ function add_constraints!(
       end
 
       if ref_subnet[:variable_f]
-         f_base = ref_subnet[:f_base]
-         # Series parameters
+         if ("f_dependent" in keys(branch)) && branch["f_dependent"] #if this is a branch (typically a cable) with modeled frequency-dependent R, L, and C parameters
+            # Currently this supports linear frequency dependence in each of the parameters series R and X and shunt G and B
+            if dc_subnet
+               r0 = branch["br_rdc"]
+               g_to0 = branch["g_to_dc"]
+               g_fr0 = branch["g_fr_dc"]
 
-         # Identify series L and C from line data
-         # Assumption: the given base line impedance is either
-         # purely inductive (positive) or purely capacitive (negative).
-         # This means that series compensation should be represented in the
-         # model as a separate branch in series
-         x_base = branch["br_x"]
-         if x_base >= 0
-            l_series[subnet_idx][i] = x_base / (2pi*f_base)
-            c_inv_series[subnet_idx][i] = 0
-         else
-            l_series[subnet_idx][i] = 0
-            c_inv_series[subnet_idx][i] = - x_base * (2pi*f_base)
-         end
-         r = branch["br_r"]
-         # Shunt parameters
-         c_fr = b_fr_base / (2pi*f_base)
-         c_to = b_to_base / (2pi*f_base)
-         # print("c_fr: $(c_fr)\n")
-         # print("c_to: $(c_to)\n")
+               g[subnet_idx][i] = 1/r0
+               b[subnet_idx][i] = 0
+               b_fr[subnet_idx][i] = 0
+               b_to[subnet_idx][i] = 0
+               g_fr[subnet_idx][i] = g_fr0
+               g_to[subnet_idx][i] = g_to0
+            else
+               x0 = branch["br_x0"]
+               x1 = branch["br_x1"]
+               x2 = branch["br_x2"]
+               r0 = branch["br_r0"]
+               r1 = branch["br_r1"]
+               r2 = branch["br_r2"]
+               b_to0 = branch["b_to0"]
+               b_to1 = branch["b_to1"]
+               b_to2 = branch["b_to2"]
+               b_fr0 = branch["b_fr0"]
+               b_fr1 = branch["b_fr1"]
+               b_fr2 = branch["b_fr2"]
+               g_to0 = branch["g_to0"]
+               g_to1 = branch["g_to1"]
+               g_to2 = branch["g_to2"]
+               g_to3 = branch["g_to3"]
+               g_to4 = branch["g_to4"]
+               g_fr0 = branch["g_fr0"]
+               g_fr1 = branch["g_fr1"]
+               g_fr2 = branch["g_fr2"]
+               g_fr3 = branch["g_fr3"]
+               g_fr4 = branch["g_fr4"]
 
-         if dc_subnet
-            g[subnet_idx][i] = 1/r
-            b[subnet_idx][i] = 0
-            b_fr[subnet_idx][i] = 0
-            b_to[subnet_idx][i] = 0
-         else
-            g[subnet_idx][i] = @variable(
-               model,
-               base_name = "g_$(subnet_idx)_$i",
-            )
-            @NLconstraint(
-               model,
-               g[subnet_idx][i] == r/(r^2 + (
-                  l_series[subnet_idx][i]^2 * (2pi)^2*f[subnet_idx]^2
-                  + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*f[subnet_idx]^2)
-                  - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
-                  ))
-            )
-            # print("defined G and equality constraint\n")
-            b[subnet_idx][i] = @variable(
-               model,
-               base_name = "b_$(subnet_idx)_$i",
-            )
-            @NLconstraint(
-               model,
-               b[subnet_idx][i] == -(
-                  (
-                     2pi*f[subnet_idx]*l_series[subnet_idx][i]
-                     - c_inv_series[subnet_idx][i] / ((2pi)*f[subnet_idx])
-                     )
-                  /(r^2 + (
-                     l_series[subnet_idx][i]^2 * (2pi)^2*f[subnet_idx]^2
-                     + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*f[subnet_idx]^2)
-                     - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
+               ω = 2pi*f[subnet_idx]
+
+               g[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "g_$(subnet_idx)_$i",
+               )
+               # @NLconstraint(
+               #    model,
+               #    g[subnet_idx][i] == (r1*2pi*f[subnet_idx]+r0) / (
+               #       f[subnet_idx]^2*(4*pi^2*(r1^2+x1^2)) + f[subnet_idx]*(4*pi*(r0*r1+x0*x1)) + r0^2 + x0^2
+               #    )
+               # )
+               @NLconstraint(
+                  model,
+                  g[subnet_idx][i] == (r2*ω^2+r1*ω+r0) / (
+                     ω^4*(r2^2+x2^2) + ω^3*(2*r1*r2+2*x1*x2) + ω^2*(2*r0*r2+r1^2+2*x0*x2+x1^2) + ω*(2*r0*r1+2*x0*x1) + r0^2 + x0^2
+                  )
+               )
+               # print("defined G and equality constraint\n")
+               b[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_$(subnet_idx)_$i",
+               )
+               # @NLconstraint(
+               #    model,
+               #    b[subnet_idx][i] == -(
+               #       (x1*2pi*f[subnet_idx]+x0) / (
+               #          f[subnet_idx]^2*(4*pi^2*(r1^2+x1^2)) + f[subnet_idx]*(4*pi*(r0*r1+x0*x1)) + r0^2 + x0^2
+               #       )
+               #    )
+               # )
+               @NLconstraint(
+                  model,
+                  b[subnet_idx][i] == -(
+                     (x2*ω^2+x1*ω+x0) / (
+                        ω^4*(r2^2+x2^2) + ω^3*(2*r1*r2+2*x1*x2) + ω^2*(2*r0*r2+r1^2+2*x0*x2+x1^2) + ω*(2*r0*r1+2*x0*x1) + r0^2 + x0^2
                      )
                   )
                )
-            )
-            b_fr[subnet_idx][i] = @variable(
-               model,
-               base_name = "b_fr_$(subnet_idx)_$i",
-            )
-            @constraint(
-               model,
-               b_fr[subnet_idx][i] == 2pi*c_fr*f[subnet_idx]
-            )
-            b_to[subnet_idx][i] = @variable(
-               model,
-               base_name = "b_to_$(subnet_idx)_$i",
-            )
-            @constraint(
-               model,
-               b_to[subnet_idx][i] == 2pi*c_to*f[subnet_idx]
-            )
-            # print("defined variable G, B\n")
+               b_fr[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_fr_$(subnet_idx)_$i",
+               )
+               # @constraint(
+               #    model,
+               #    b_fr[subnet_idx][i] == 2pi*b_fr1*f[subnet_idx] + b_fr0
+               # )
+               @constraint(
+                  model,
+                  b_fr[subnet_idx][i] == ω^2*b_fr2 + ω*b_fr1 + b_fr0
+               )
+               b_to[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_to_$(subnet_idx)_$i",
+               )
+               # @constraint(
+               #    model,
+               #    b_to[subnet_idx][i] == 2pi*b_to1*f[subnet_idx] + b_to0
+               # )
+               @constraint(
+                  model,
+                  b_to[subnet_idx][i] == ω^2*b_to2 + ω*b_to1 + b_to0
+               )
+               g_fr[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "g_fr_$(subnet_idx)_$i",
+               )
+               # @constraint(
+               #    model,
+               #    g_fr[subnet_idx][i] == 2pi*g_fr1*f[subnet_idx] + g_fr0
+               # )
+               @NLconstraint(
+                  model,
+                  g_fr[subnet_idx][i] == ω^4*g_fr4 + ω^3*g_fr3 + ω^2*g_fr2 + ω*g_fr1 + g_fr0
+               )
+               g_to[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "g_to_$(subnet_idx)_$i",
+               )
+               # @constraint(
+               #    model,
+               #    g_to[subnet_idx][i] == 2pi*g_to1*f[subnet_idx] + g_to0
+               # )
+               @NLconstraint(
+                  model,
+                  g_to[subnet_idx][i] == ω^4*g_to4 + ω^3*g_to3 + ω^2*g_to2 + ω*g_to1 + g_to0
+               )
+            end
+
+         else #if this is a normal branch with constant R, L, and C
+            g_fr[subnet_idx][i] = branch["g_fr"]
+            g_to[subnet_idx][i] = branch["g_to"]
+            b_fr_base = branch["b_fr"]
+            b_to_base = branch["b_to"]
+
+            f_base = ref_subnet[:f_base]
+            # Series parameters
+
+            # Identify series L and C from line data
+            # Assumption: the given base line impedance is either
+            # purely inductive (positive) or purely capacitive (negative).
+            # This means that series compensation should be represented in the
+            # model as a separate branch in series
+            x_base = branch["br_x"]
+            if x_base >= 0
+               l_series[subnet_idx][i] = x_base / (2pi*f_base)
+               c_inv_series[subnet_idx][i] = 0
+            else
+               l_series[subnet_idx][i] = 0
+               c_inv_series[subnet_idx][i] = - x_base * (2pi*f_base)
+            end
+            r = branch["br_r"]
+            # Shunt parameters
+            c_fr = b_fr_base / (2pi*f_base)
+            c_to = b_to_base / (2pi*f_base)
+            # print("c_fr: $(c_fr)\n")
+            # print("c_to: $(c_to)\n")
+
+            if dc_subnet
+               g[subnet_idx][i] = 1/r
+               b[subnet_idx][i] = 0
+               b_fr[subnet_idx][i] = 0
+               b_to[subnet_idx][i] = 0
+            else
+               g[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "g_$(subnet_idx)_$i",
+               )
+               @NLconstraint(
+                  model,
+                  g[subnet_idx][i] == r/(r^2 + (
+                     l_series[subnet_idx][i]^2 * (2pi)^2*f[subnet_idx]^2
+                     + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*f[subnet_idx]^2)
+                     - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
+                     ))
+               )
+               # print("defined G and equality constraint\n")
+               b[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_$(subnet_idx)_$i",
+               )
+               @NLconstraint(
+                  model,
+                  b[subnet_idx][i] == -(
+                     (
+                        2pi*f[subnet_idx]*l_series[subnet_idx][i]
+                        - c_inv_series[subnet_idx][i] / ((2pi)*f[subnet_idx])
+                        )
+                     /(r^2 + (
+                        l_series[subnet_idx][i]^2 * (2pi)^2*f[subnet_idx]^2
+                        + c_inv_series[subnet_idx][i]^2 / ((2pi)^2*f[subnet_idx]^2)
+                        - 2 * l_series[subnet_idx][i] * c_inv_series[subnet_idx][i]
+                        )
+                     )
+                  )
+               )
+               b_fr[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_fr_$(subnet_idx)_$i",
+               )
+               @constraint(
+                  model,
+                  b_fr[subnet_idx][i] == 2pi*c_fr*f[subnet_idx]
+               )
+               b_to[subnet_idx][i] = @variable(
+                  model,
+                  base_name = "b_to_$(subnet_idx)_$i",
+               )
+               @constraint(
+                  model,
+                  b_to[subnet_idx][i] == 2pi*c_to*f[subnet_idx]
+               )
+               # print("defined variable G, B\n")
+            end
          end
       else #if !ref_subnet[:variable_f]
          # The frequency is fixed at the base value and all remaining line parameters are defined as fixed based on the base values at that frequency
@@ -253,19 +385,88 @@ function add_constraints!(
             f_ratio = ref_subnet[:f_fixed]/ref_subnet[:f_base]
          else
             f_ratio = 1
+            ref_subnet[:f_fixed] = ref_subnet[:f_base]
          end
 
-         if f_ratio == 1
+         if f_ratio == 0 # DC subnetwork
+            if ("f_dependent" in keys(branch)) && branch["f_dependent"]
+               r0 = branch["br_rdc"]
+               g_to0 = branch["g_to_dc"]
+               g_fr0 = branch["g_fr_dc"]
+
+               g[subnet_idx][i] = 1/r0
+               b[subnet_idx][i] = 0
+               b_fr[subnet_idx][i] = 0
+               b_to[subnet_idx][i] = 0
+               g_fr[subnet_idx][i] = g_fr0
+               g_to[subnet_idx][i] = g_to0
+            else
+               r = branch["br_r"]
+               g[subnet_idx][i] = 1/r
+               b[subnet_idx][i] = 0
+               b_fr[subnet_idx][i] = 0
+               b_to[subnet_idx][i] = 0
+               g_fr[subnet_idx][i] = branch["g_fr"]
+               g_to[subnet_idx][i] = branch["g_to"]
+            end
+         elseif ("f_dependent" in keys(branch)) && branch["f_dependent"] #if this is a branch (typically a cable) with modeled frequency-dependent R, L, and C parameters
+            x0 = branch["br_x0"]
+            x1 = branch["br_x1"]
+            x2 = branch["br_x2"]
+            r0 = branch["br_r0"]
+            r1 = branch["br_r1"]
+            r2 = branch["br_r2"]
+            b_to0 = branch["b_to0"]
+            b_to1 = branch["b_to1"]
+            b_to2 = branch["b_to2"]
+            b_fr0 = branch["b_fr0"]
+            b_fr1 = branch["b_fr1"]
+            b_fr2 = branch["b_fr2"]
+            g_to0 = branch["g_to0"]
+            g_to1 = branch["g_to1"]
+            g_to2 = branch["g_to2"]
+            g_to3 = branch["g_to3"]
+            g_to4 = branch["g_to4"]
+            g_fr0 = branch["g_fr0"]
+            g_fr1 = branch["g_fr1"]
+            g_fr2 = branch["g_fr2"]
+            g_fr3 = branch["g_fr3"]
+            g_fr4 = branch["g_fr4"]
+
+            ω = 2pi*ref_subnet[:f_fixed]
+
+            # g[subnet_idx][i] = (r1*2pi*ref_subnet[:f_fixed]+r0) / (
+            #    ref_subnet[:f_fixed]^2*(4*pi^2*(r1^2+x1^2)) + ref_subnet[:f_fixed]*(4*pi*(r0*r1+x0*x1)) + r0^2 + x0^2
+            # )
+            g[subnet_idx][i] = (r2*ω^2+r1*ω+r0) / (
+               ω^4*(r2^2+x2^2) + ω^3*(2*r1*r2+2*x1*x2) + ω^2*(2*r0*r2+r1^2+2*x0*x2+x1^2) + ω*(2*r0*r1+2*x0*x1) + r0^2 + x0^2
+            )
+            # g[subnet_idx][i] = (r4*ω^4+r3*ω^3+r2*ω^2+r1*ω+r0) / (
+            #    (r4*ω^4+r3*ω^3+r2*ω^2+r1*ω+r0)^2 + (x2*ω^2+x1*ω+x0)^2
+            # )
+            b[subnet_idx][i] = -(
+               (x2*ω^2+x1*ω+x0) / (
+                  ω^4*(r2^2+x2^2) + ω^3*(2*r1*r2+2*x1*x2) + ω^2*(2*r0*r2+r1^2+2*x0*x2+x1^2) + ω*(2*r0*r1+2*x0*x1) + r0^2 + x0^2
+               )
+            )
+            # b[subnet_idx][i] = -(
+            #    (x2*ω^2+x1*ω+x0) / (
+            #       (r4*ω^4+r3*ω^3+r2*ω^2+r1*ω+r0)^2 + (x2*ω^2+x1*ω+x0)^2
+            #    )
+            # )
+            b_fr[subnet_idx][i] = ω^2*b_fr2 + ω*b_fr1 + b_fr0
+            b_to[subnet_idx][i] = ω^2*b_to2 + ω*b_to1 + b_to0
+            g_fr[subnet_idx][i] = ω^4*g_fr4 + ω^3*g_fr3 + ω^2*g_fr2 + ω*g_fr1 + g_fr0
+            g_to[subnet_idx][i] = ω^4*g_to4 + ω^3*g_to3 + ω^2*g_to2 + ω*g_to1 + g_to0
+            println("subnet $subnet_idx branch $(branch["index"]) has frequency $(ref_subnet[:f_fixed]) and frequency-dependent parameters")
+         elseif f_ratio == 1
+            g_base, b_base = PowerModels.calc_branch_y(branch)
             g[subnet_idx][i] = g_base
             b[subnet_idx][i] = b_base
-            b_fr[subnet_idx][i] = b_fr_base
-            b_to[subnet_idx][i] = b_to_base
-         elseif f_ratio == 0 # DC subnetwork
-            r = branch["br_r"]
-            g[subnet_idx][i] = 1/r
-            b[subnet_idx][i] = 0
-            b_fr[subnet_idx][i] = 0
-            b_to[subnet_idx][i] = 0
+            b_fr[subnet_idx][i] = branch["b_fr"]
+            b_to[subnet_idx][i] = branch["b_to"]
+            g_fr[subnet_idx][i] = branch["g_fr"]
+            g_to[subnet_idx][i] = branch["g_to"]
          else
             f_base = ref_subnet[:f_base]
             # Series parameters
@@ -275,6 +476,10 @@ function add_constraints!(
             # purely inductive (positive) or purely capacitive (negative).
             # This means that series compensation should be represented in the
             # model as a separate branch in series
+            g_fr[subnet_idx][i] = branch["g_fr"]
+            g_to[subnet_idx][i] = branch["g_to"]
+            b_fr_base = branch["b_fr"]
+            b_to_base = branch["b_to"]
             x_base = branch["br_x"]
             if x_base >= 0
                l_series[subnet_idx][i] = x_base / (2pi*f_base)

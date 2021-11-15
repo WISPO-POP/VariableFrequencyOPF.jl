@@ -8,32 +8,46 @@ Reads a network folder and builds the mn_data dictionary.
 - `folder::String`: the path to the folder containing all the network data
 """
 function read_sn_data(folder::String; kwargs...)
-   directory_path = "$folder/"
+   directory_path = abspath(folder)
+
    subnet_file = "$(directory_path)/subnetworks.csv"
 
-   subnets = CSV.read(subnet_file, DataFrame)
+   if isfile(subnet_file)
+      subnets = CSV.read(subnet_file, DataFrame)
 
-   if nrow(subnets) == 1
-      interfaces = DataFrame(index=Int64[],file=String[],variable_f=Bool[],f_base=Float64[],f_min=Float64[],fmax=Float64[])
+      if nrow(subnets) == 1
+         interfaces = DataFrame(index=Int64[],file=String[],variable_f=Bool[],f_base=Float64[],f_min=Float64[],fmax=Float64[])
+      else
+         interface_file = "$(directory_path)/interfaces.csv"
+         interfaces = CSV.read(interface_file, DataFrame)
+      end
+
+      networks = Dict{String,Any}()
+
+      for subnet in eachrow(subnets)
+         file_name = directory_path*"/"*subnet.file
+         networks[subnet.file] = PowerModels.parse_file(file_name)
+
+         # Add zeros to turn linear objective functions into quadratic ones
+         # so that additional parameter checks are not required
+         PowerModels.standardize_cost_terms!(networks[subnet.file], order=2)
+
+      end
+
+      mn_data = make_mn_data(subnets, interfaces, networks; kwargs...)
+
    else
-      interface_file = "$(directory_path)/interfaces.csv"
-      interfaces = CSV.read(interface_file, DataFrame)
+      mn_data = Dict()
+      for file in readdir(directory_path)
+         if occursin(".json",file)
+            mn_data = JSON.parsefile(joinpath(directory_path,file))
+            break
+         end
+      end
+      if length(mn_data) == 0
+         println("No subnetworks file or json network dictionary found in $directory_path. The network data is empty.")
+      end
    end
-
-   networks = Dict{String,Any}()
-
-   for subnet in eachrow(subnets)
-      file_name = directory_path*subnet.file
-      networks[subnet.file] = PowerModels.parse_file(file_name)
-
-      # Add zeros to turn linear objective functions into quadratic ones
-      # so that additional parameter checks are not required
-      PowerModels.standardize_cost_terms!(networks[subnet.file], order=2)
-
-   end
-
-   mn_data = make_mn_data(subnets, interfaces, networks; kwargs...)
-
    return mn_data
 end
 
@@ -100,7 +114,7 @@ function make_mn_data(
    end
 
 
-   mn_data["converter"] = Dict{Int64, Any}()
+   mn_data["converter"] = Dict{String, Any}()
    interface_bus = Array{Tuple{Int64,Int64},1}()
    for interface in eachrow(interfaces)
       # Check that we have transformer/filter branch data in the interfaces file and for this terminal specifically
@@ -131,7 +145,7 @@ function make_mn_data(
          end
          # Include current limit in bus data
          # mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["converter_imax"] = Dict{Int64,Float64}()
-         # mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["converter_imax"][interface.index] = interface.imax
+         # mn_data["sn"]["$(interface.subnet_index)"]["bus"]["$(new_bus_idx)"]["converter_imax"]["$(interface.index)"] = interface.imax
 
          # Now define a branch at the terminal
          new_branch_idx = maximum(parse.(Int,keys(mn_data["sn"]["$(interface.subnet_index)"]["branch"]))) + 1
@@ -192,15 +206,15 @@ function make_mn_data(
       # along with dictionaries for all the parameters, indexed by the converter index
       if !("converter_index" in keys(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]))
          mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"] = Array{Tuple,1}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"] = Dict{Int64,Float64}()
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"] = Dict{Int64,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"] = Dict{String,Float64}()
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"] = Dict{String,Float64}()
       end
       param_labels = [:imax,:vmax,:c1,:c2,:c3,:sw1,:sw2,:sw3,:M]
       converter_params = Dict{Symbol,Any}()
@@ -233,15 +247,15 @@ function make_mn_data(
       end
 
       if !(interface.index in mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"])
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"][interface.index] = converter_params[:imax]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"][interface.index] = converter_params[:vmax]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c1]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c2]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"][interface.index]   = no_converter_loss ? 0.0 : converter_params[:c3]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw1]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw2]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"][interface.index]  = no_converter_loss ? 0.0 : converter_params[:sw3]
-         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"][interface.index]    = converter_params[:M]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_imax"]["$(interface.index)"] = converter_params[:imax]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_vmax"]["$(interface.index)"] = converter_params[:vmax]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c1"]["$(interface.index)"]   = no_converter_loss ? 0.0 : converter_params[:c1]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c2"]["$(interface.index)"]   = no_converter_loss ? 0.0 : converter_params[:c2]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_c3"]["$(interface.index)"]   = no_converter_loss ? 0.0 : converter_params[:c3]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw1"]["$(interface.index)"]  = no_converter_loss ? 0.0 : converter_params[:sw1]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw2"]["$(interface.index)"]  = no_converter_loss ? 0.0 : converter_params[:sw2]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_sw3"]["$(interface.index)"]  = no_converter_loss ? 0.0 : converter_params[:sw3]
+         mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_M"]["$(interface.index)"]    = converter_params[:M]
          if (interface.index,interface_bus[1],interface_bus[2]) ∉ mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"]
             push!(mn_data["sn"]["$(interface_bus[1])"]["bus"]["$(interface_bus[2])"]["converter_index"], (interface.index,interface_bus[1],interface_bus[2]))
          end
@@ -250,69 +264,71 @@ function make_mn_data(
 
 
 
-      if !(interface.index in keys(mn_data["converter"]))
-         mn_data["converter"][interface.index] = Dict{String,Any}("converter_buses" => Array{Tuple{Int64,Int64},1}())
+      if !("$(interface.index)" in keys(mn_data["converter"]))
+         mn_data["converter"]["$(interface.index)"] = Dict{String,Any}("converter_buses" => Array{Tuple{Int64,Int64},1}())
+         mn_data["converter"]["$(interface.index)"]["index"] = interface.index
       end
-      if !(interface_bus in mn_data["converter"][interface.index]["converter_buses"])
-         push!(mn_data["converter"][interface.index]["converter_buses"], interface_bus)
-      end
-
-      if !("imax" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["imax"] = Dict(interface_bus => converter_params[:imax])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["imax"]))
-         mn_data["converter"][interface.index]["imax"][interface_bus] = converter_params[:imax]
+      if !(interface_bus in mn_data["converter"]["$(interface.index)"]["converter_buses"])
+         push!(mn_data["converter"]["$(interface.index)"]["converter_buses"], interface_bus)
       end
 
-      if !("vmax" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["vmax"] = Dict(interface_bus => converter_params[:vmax])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["vmax"]))
-         mn_data["converter"][interface.index]["vmax"][interface_bus] = converter_params[:vmax]
+      if !("imax" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["imax"] = Dict(interface_bus => converter_params[:imax])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["imax"]))
+         println("converter_params[:imax] = $(converter_params[:imax])")
+         mn_data["converter"]["$(interface.index)"]["imax"][interface_bus] = converter_params[:imax]
       end
 
-      if !("c1" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["c1"] = Dict(interface_bus => converter_params[:c1])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["c1"]))
-         mn_data["converter"][interface.index]["c1"][interface_bus] = converter_params[:c1]
+      if !("vmax" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["vmax"] = Dict(interface_bus => converter_params[:vmax])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["vmax"]))
+         mn_data["converter"]["$(interface.index)"]["vmax"][interface_bus] = converter_params[:vmax]
       end
 
-      if !("c2" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["c2"] = Dict(interface_bus => converter_params[:c2])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["c2"]))
-         mn_data["converter"][interface.index]["c2"][interface_bus] = converter_params[:c2]
+      if !("c1" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["c1"] = Dict(interface_bus => converter_params[:c1])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["c1"]))
+         mn_data["converter"]["$(interface.index)"]["c1"][interface_bus] = converter_params[:c1]
       end
 
-      if !("c3" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["c3"] = Dict(interface_bus => converter_params[:c3])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["c3"]))
-         mn_data["converter"][interface.index]["c3"][interface_bus] = converter_params[:c3]
+      if !("c2" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["c2"] = Dict(interface_bus => converter_params[:c2])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["c2"]))
+         mn_data["converter"]["$(interface.index)"]["c2"][interface_bus] = converter_params[:c2]
       end
 
-      if !("sw1" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["sw1"] = Dict(interface_bus => converter_params[:sw1])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["sw1"]))
-         mn_data["converter"][interface.index]["sw1"][interface_bus] = converter_params[:sw1]
+      if !("c3" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["c3"] = Dict(interface_bus => converter_params[:c3])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["c3"]))
+         mn_data["converter"]["$(interface.index)"]["c3"][interface_bus] = converter_params[:c3]
       end
 
-      if !("sw2" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["sw2"] = Dict(interface_bus => converter_params[:sw2])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["sw2"]))
-         mn_data["converter"][interface.index]["sw2"][interface_bus] = converter_params[:sw2]
+      if !("sw1" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["sw1"] = Dict(interface_bus => converter_params[:sw1])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["sw1"]))
+         mn_data["converter"]["$(interface.index)"]["sw1"][interface_bus] = converter_params[:sw1]
       end
 
-      if !("sw3" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["sw3"] = Dict(interface_bus => converter_params[:sw3])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["sw3"]))
-         mn_data["converter"][interface.index]["sw3"][interface_bus] = converter_params[:sw3]
+      if !("sw2" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["sw2"] = Dict(interface_bus => converter_params[:sw2])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["sw2"]))
+         mn_data["converter"]["$(interface.index)"]["sw2"][interface_bus] = converter_params[:sw2]
       end
 
-      if !("M" in keys(mn_data["converter"][interface.index]))
-         mn_data["converter"][interface.index]["M"] = Dict(interface_bus => converter_params[:M])
-      elseif !(interface_bus in keys(mn_data["converter"][interface.index]["M"]))
-         mn_data["converter"][interface.index]["M"][interface_bus] = converter_params[:M]
+      if !("sw3" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["sw3"] = Dict(interface_bus => converter_params[:sw3])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["sw3"]))
+         mn_data["converter"]["$(interface.index)"]["sw3"][interface_bus] = converter_params[:sw3]
       end
 
-         # if "converter_buses" not in keys(mn_data["converter"][interface.index])
-         #    mn_data["converter"][interface.index]["converter_buses"] = Array{Tuple(Int64,Int64)}()
+      if !("M" in keys(mn_data["converter"]["$(interface.index)"]))
+         mn_data["converter"]["$(interface.index)"]["M"] = Dict(interface_bus => converter_params[:M])
+      elseif !(interface_bus in keys(mn_data["converter"]["$(interface.index)"]["M"]))
+         mn_data["converter"]["$(interface.index)"]["M"][interface_bus] = converter_params[:M]
+      end
+
+         # if "converter_buses" not in keys(mn_data["converter"]["$(interface.index)"])
+         #    mn_data["converter"]["$(interface.index)"]["converter_buses"] = Array{Tuple(Int64,Int64)}()
          # end
       # print("parsed $(directory_path)/$(file_name)\n")
    end

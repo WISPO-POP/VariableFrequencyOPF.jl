@@ -88,6 +88,11 @@ function plot_results_dict_line(
                x_result = sum(res)
                x_label = "total $res_label_x"
             else
+               # println("subnet_arr: $subnet_arr")
+               # println("subnet_x: $subnet_x")
+               # println("res: $res")
+               # println(results_dict["subnet"]["1"])
+               # x_result = res[findfirst(results_dict["subnet"]["1"].==subnet_x)]
                x_result = res[findfirst(subnet_arr.==subnet_x)]
                x_label = "subnet $subnet_x $res_label_x"
             end
@@ -129,7 +134,7 @@ function plot_results_dict_line(
             (res_label_x,subnet_x) = ax_key
             pts_x_arr = Array{Float64,1}()
             x_label = ""
-            pts_indices_arr = Array{Int64,1}()
+            pts_indices_arr = Array{Any,1}()
             for (param,res) in points_dict[res_label_x]
                if length(res) == 1
                   x_result = (res isa Array) ? res[1] : res
