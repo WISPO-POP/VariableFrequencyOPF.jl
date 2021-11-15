@@ -24,6 +24,7 @@ import MathOptInterface
 
 include("plot/bar-plots.jl")
 include("plot/line-plots.jl")
+include("plot/multi_plot_new.jl")
 
 include("core/multifrequency-opf.jl")
 include("core/variables.jl")
@@ -44,6 +45,8 @@ include("util/dict-util.jl")
 include("util/multi-folder.jl")
 include("util/no-loss-override.jl")
 include("util/param-sweep.jl")
+include("util/time_series_opf.jl")
+include("util/time_parse.jl")
 
 
 end
