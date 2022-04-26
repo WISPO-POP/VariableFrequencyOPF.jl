@@ -61,7 +61,8 @@ function multifrequency_opf(
    output_location_base::String="",
    output_top_folder::String="",
    regularize_f::Float64=0.0,
-   ipopt_max_iter::Int64=10000
+   ipopt_max_iter::Int64=10000,
+   soft_vlim::Bool=false
    )
 
    println("read_sn_data($folder)")
@@ -105,7 +106,8 @@ function multifrequency_opf(
       unbounded_pg,
       output_to_files,
       regularize_f=regularize_f,
-      ipopt_max_iter=ipopt_max_iter
+      ipopt_max_iter=ipopt_max_iter,
+      soft_vlim=soft_vlim
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -126,7 +128,8 @@ function multifrequency_opf(
       suffix::String="",
       start_vals=Dict{String, Dict}("sn"=>Dict());
       regularize_f::Float64=0.0,
-      ipopt_max_iter::Int64=10000
+      ipopt_max_iter::Int64=10000,
+      soft_vlim=false
       )
 
       (output_dict, res_summary, solution_pm, binding_cnstr_dict) = multifrequency_opf(
@@ -144,7 +147,8 @@ function multifrequency_opf(
          suffix=suffix,
          start_vals=start_vals,
          regularize_f=regularize_f,
-         ipopt_max_iter=ipopt_max_iter
+         ipopt_max_iter=ipopt_max_iter,
+         soft_vlim=soft_vlim
       )
 
       return (output_dict, res_summary, solution_pm, binding_cnstr_dict)
@@ -168,7 +172,8 @@ function multifrequency_opf(
       unbounded_pg::Bool=false,
       output_to_files::Bool=true;
       regularize_f::Float64=0.0,
-      ipopt_max_iter::Int64=10000
+      ipopt_max_iter::Int64=10000,
+      soft_vlim=false
       )
 
    # If direct_pq is false, then interface flow respects Kirchoff
@@ -290,7 +295,6 @@ function multifrequency_opf(
    # 1. Building the Optimal Power Flow Model
    ###############################################################################
 
-
    # Initialize a JuMP Optimization Model
    #-------------------------------------
    t_start = time_ns()
@@ -354,10 +358,11 @@ function multifrequency_opf(
          model,
          va, vm, pg, qg, p, q, p_dc, q_dc, g, b, b_fr, b_to, g_fr, g_to, l_series,
          c_inv_series, f, b_shunt, cost_pg, cost_dcline, area_pg, zone_pg, redispatch_pg,
-         redispatch_qg, redispatch_vm, redispatch_va, p_i, q_i,
+         redispatch_qg, redispatch_vm, redispatch_va, p_i, q_i, soft_vlim,
          constraints,
          )
    end
+
    # Add converter interface variables and constraints
    for (conv_idx, conv_params) in mn_data["converter"]
       p_i[conv_idx] = @variable(
@@ -636,9 +641,12 @@ function multifrequency_opf(
       va, vm, pg, qg, p, q, f
       )
 
-
    # Add Objective Function
    # ----------------------
+   if !soft_vlim
+      v_penalty = Dict(subnet_idx=>0 for (subnet_idx, ref_subnet) in ref)
+   end
+
    if regularize_f > 0.0
       f_regularizer = @variable(
          model,
@@ -656,12 +664,14 @@ function multifrequency_opf(
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
          )
       else
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref)
          )
       end
    elseif obj=="minredispatch"
@@ -672,14 +682,16 @@ function multifrequency_opf(
          # sum(redispatch_qg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
          1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
          # sum(redispatch_va[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+         sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
          f_regularizer
       )
       else
          @objective(model, Min,
             sum(redispatch_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             # sum(redispatch_qg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-            1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            1e9*sum(redispatch_vm[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             # sum(redispatch_va[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref)
          )
       end
    elseif obj=="areagen"
@@ -687,11 +699,13 @@ function multifrequency_opf(
       if regularize_f > 0.0
          @objective(model, Min,
             sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
          )
       else
          @objective(model, Min,
-            sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            sum(area_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref)
          )
       end
    elseif obj=="zonegen"
@@ -699,11 +713,13 @@ function multifrequency_opf(
       if regularize_f > 0.0
          @objective(model, Min,
             sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
          )
       else
          @objective(model, Min,
-            sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            sum(zone_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref)
          )
       end
    else
@@ -714,12 +730,14 @@ function multifrequency_opf(
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
             f_regularizer
          )
       else
          @objective(model, Min,
             sum(cost_pg[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
-            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref)
+            sum(cost_dcline[subnet_idx] for (subnet_idx, ref_subnet) in ref) +
+            sum(v_penalty[subnet_idx] for (subnet_idx, ref_subnet) in ref)
          )
       end
    end

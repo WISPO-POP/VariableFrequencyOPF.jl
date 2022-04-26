@@ -17,10 +17,14 @@ using CategoricalArrays
 using Plots
 using Plots.PlotMeasures
 using StatsPlots
+using Logging
 # using AmplNLWriter
 import Unicode
 # import GR
 import MathOptInterface
+
+debuglogger = ConsoleLogger(stderr, Logging.Debug)
+global_logger(debuglogger)
 
 include("plot/bar-plots.jl")
 include("plot/line-plots.jl")

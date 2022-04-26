@@ -5,7 +5,7 @@ function add_vars!(
    model,
    va, vm, pg, qg, p, q, p_dc, q_dc, g, b, b_fr, b_to, g_fr, g_to, l_series,
    c_inv_series, f, b_shunt, cost_pg, cost_dcline, area_pg, zone_pg, redispatch_pg,
-   redispatch_qg, redispatch_vm, redispatch_va, p_i, q_i,
+   redispatch_qg, redispatch_vm, redispatch_va, p_i, q_i, soft_vlim,
    constraints
    )
    # Add Optimization and State Variables
@@ -37,15 +37,48 @@ function add_vars!(
    # println([mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["va"] for i in keys(ref_subnet[:bus])])
    # note: [i in keys(ref[:bus])] adds one `va` variable for each bus in the subnetwork
    # Add voltage magnitudes vm for each bus
-   vm[subnet_idx] = @variable(
-      model,
-      [i in keys(ref_subnet[:bus])],
-      base_name = "vm_$(subnet_idx)",
-      upper_bound = ref_subnet[:bus][i]["vmax"],
-      lower_bound = ref_subnet[:bus][i]["vmin"],
-      start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["vm"]
-      # start = 1.0
-   )
+   if !soft_vlim
+      vm[subnet_idx] = @variable(
+         model,
+         [i in keys(ref_subnet[:bus])],
+         base_name = "vm_$(subnet_idx)",
+         upper_bound = ref_subnet[:bus][i]["vmax"],
+         lower_bound = ref_subnet[:bus][i]["vmin"],
+         start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["vm"]
+      )
+   else # soft voltage limits
+      vm[subnet_idx] = @variable(
+         model,
+         [i in keys(ref_subnet[:bus])],
+         base_name = "vm_$(subnet_idx)",
+         start = mn_data["sn"]["$(subnet_idx)"]["bus"]["$i"]["vm"]
+      )
+      v_viol[subnet_idx] = @variable(
+         model,
+         [i in keys(ref_subnet[:bus])],
+         lower_bound = 0,
+         base_name = "v_viol_$(subnet_idx)"
+      )
+      v_penalty[subnet_idx] = @variable(
+         model,
+         lower_bound = 0,
+         base_name = "v_penalty_$(subnet_idx)"
+      )
+      for (i,bus) in ref_subnet[:bus]
+         @constraint(
+            model,
+            v_viol[subnet_idx][i] >= vm[subnet_idx][i] - ref_subnet[:bus][i]["vmax"]
+         )
+         @constraint(
+            model,
+            v_viol[subnet_idx][i] >= ref_subnet[:bus][i]["vmin"] - vm[subnet_idx][i]
+         )
+      end
+      @constraint(
+         model,
+         v_penalty[subnet_idx] = sum(v_viol[subnet_idx][i]^2 for i in keys(ref_subnet[:bus])
+      )
+   end
    for bus_i in keys(ref_subnet[:bus])
       if !(subnet_idx in keys(constraints[:vm_llim]))
          constraints[:vm_llim][subnet_idx] = Dict{Int64,Any}()
